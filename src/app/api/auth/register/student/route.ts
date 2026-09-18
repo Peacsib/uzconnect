@@ -16,8 +16,19 @@ export async function POST(req: Request) {
 
     const cleanEmail = String(email).trim().toLowerCase();
     const cleanReg = String(regNumber).trim().toUpperCase();
+    const emailPrefix = cleanEmail.split('@')[0].trim().toUpperCase();
 
-    // Check if email already registered
+    // REQUIREMENT: Flag if email prefix does not match registration number
+    if (emailPrefix !== cleanReg) {
+      return NextResponse.json(
+        {
+          error: `Registration number mismatch! Your student email starts with "${emailPrefix}", but registration number was entered as "${cleanReg}". Student emails must follow the format ${cleanReg}@uofzmail.uz.ac.zw.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already registered in User table
     const existingEmail = await prisma.user.findUnique({
       where: { email: cleanEmail },
     });
@@ -28,22 +39,26 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if registration number already in use
-    const existingReg = await prisma.student.findUnique({
+    // Check if registration number already in use on User or Student tables
+    const existingUserReg = await prisma.user.findUnique({
       where: { regNumber: cleanReg },
     });
-    if (existingReg) {
+    const existingStudentReg = await prisma.student.findUnique({
+      where: { regNumber: cleanReg },
+    });
+    if (existingUserReg || existingStudentReg) {
       return NextResponse.json(
         { error: "An account with this registration number already exists." },
         { status: 409 }
       );
     }
 
-    // Get programme ID - fallback to first programme if none provided
+    // Validate programme ID
     let pId = Number(programmeId);
-    if (isNaN(pId) || pId <= 0) {
-      const firstProg = await prisma.programme.findFirst();
-      pId = firstProg ? firstProg.id : 1;
+    let targetProgramme = await prisma.programme.findUnique({ where: { id: pId } });
+    if (!targetProgramme) {
+      targetProgramme = await prisma.programme.findFirst();
+      pId = targetProgramme ? targetProgramme.id : 1;
     }
 
     const passwordHash = await bcrypt.hash(password, 10);
@@ -69,6 +84,17 @@ export async function POST(req: Request) {
         email: true,
         role: true,
         regNumber: true,
+        student: {
+          select: {
+            programme: {
+              select: {
+                id: true,
+                code: true,
+                name: true,
+              },
+            },
+          },
+        },
       },
     });
 

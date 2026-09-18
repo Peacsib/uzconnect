@@ -1,0 +1,272 @@
+[
+    {
+        "id": 149,
+        "name": "Accountancy",
+        "faculty_id": 139
+    },
+    {
+        "id": 141,
+        "name": "African Languages and Literature",
+        "faculty_id": 138
+    },
+    {
+        "id": 140,
+        "name": "Agricultural Economics & Extension",
+        "faculty_id": 137
+    },
+    {
+        "id": 138,
+        "name": "Animal Science",
+        "faculty_id": 137
+    },
+    {
+        "id": 163,
+        "name": "Architecture & Quantity Surveying",
+        "faculty_id": 142
+    },
+    {
+        "id": 156,
+        "name": "Arts and Language Education",
+        "faculty_id": 141
+    },
+    {
+        "id": 174,
+        "name": "Biochemistry",
+        "faculty_id": 145
+    },
+    {
+        "id": 175,
+        "name": "Biological Sciences",
+        "faculty_id": 145
+    },
+    {
+        "id": 150,
+        "name": "Business Studies",
+        "faculty_id": 139
+    },
+    {
+        "id": 160,
+        "name": "Chemical Engineering",
+        "faculty_id": 142
+    },
+    {
+        "id": 176,
+        "name": "Chemistry",
+        "faculty_id": 145
+    },
+    {
+        "id": 157,
+        "name": "Civil Engineering",
+        "faculty_id": 142
+    },
+    {
+        "id": 166,
+        "name": "Clinical Sciences",
+        "faculty_id": 144
+    },
+    {
+        "id": 172,
+        "name": "Community Medicine",
+        "faculty_id": 144
+    },
+    {
+        "id": 153,
+        "name": "Computer Science",
+        "faculty_id": 140
+    },
+    {
+        "id": 177,
+        "name": "Computer Science",
+        "faculty_id": 145
+    },
+    {
+        "id": 137,
+        "name": "Crop Science",
+        "faculty_id": 137
+    },
+    {
+        "id": 188,
+        "name": "Demography & Population Studies",
+        "faculty_id": 146
+    },
+    {
+        "id": 142,
+        "name": "Economic History",
+        "faculty_id": 138
+    },
+    {
+        "id": 154,
+        "name": "Educational Foundations",
+        "faculty_id": 141
+    },
+    {
+        "id": 158,
+        "name": "Electrical Engineering",
+        "faculty_id": 142
+    },
+    {
+        "id": 143,
+        "name": "English",
+        "faculty_id": 138
+    },
+    {
+        "id": 178,
+        "name": "Geography & Environmental Science",
+        "faculty_id": 145
+    },
+    {
+        "id": 144,
+        "name": "Geography and Environmental Science",
+        "faculty_id": 138
+    },
+    {
+        "id": 179,
+        "name": "Geology",
+        "faculty_id": 145
+    },
+    {
+        "id": 152,
+        "name": "Graduate School of Management",
+        "faculty_id": 139
+    },
+    {
+        "id": 145,
+        "name": "History",
+        "faculty_id": 138
+    },
+    {
+        "id": 187,
+        "name": "Library & Information Science",
+        "faculty_id": 146
+    },
+    {
+        "id": 146,
+        "name": "Linguistics",
+        "faculty_id": 138
+    },
+    {
+        "id": 180,
+        "name": "Mathematics",
+        "faculty_id": 145
+    },
+    {
+        "id": 159,
+        "name": "Mechanical Engineering",
+        "faculty_id": 142
+    },
+    {
+        "id": 189,
+        "name": "Media Studies",
+        "faculty_id": 146
+    },
+    {
+        "id": 170,
+        "name": "Medical Laboratory Sciences",
+        "faculty_id": 144
+    },
+    {
+        "id": 162,
+        "name": "Metallurgy & Materials Engineering",
+        "faculty_id": 142
+    },
+    {
+        "id": 161,
+        "name": "Mining Engineering",
+        "faculty_id": 142
+    },
+    {
+        "id": 147,
+        "name": "Modern Languages",
+        "faculty_id": 138
+    },
+    {
+        "id": 168,
+        "name": "Nursing Science",
+        "faculty_id": 144
+    },
+    {
+        "id": 173,
+        "name": "Oral & Maxillofacial Surgery",
+        "faculty_id": 144
+    },
+    {
+        "id": 169,
+        "name": "Pharmacy",
+        "faculty_id": 144
+    },
+    {
+        "id": 181,
+        "name": "Physics",
+        "faculty_id": 145
+    },
+    {
+        "id": 183,
+        "name": "Politics & Public Management",
+        "faculty_id": 146
+    },
+    {
+        "id": 165,
+        "name": "Private Law",
+        "faculty_id": 143
+    },
+    {
+        "id": 184,
+        "name": "Psychology",
+        "faculty_id": 146
+    },
+    {
+        "id": 164,
+        "name": "Public Law",
+        "faculty_id": 143
+    },
+    {
+        "id": 171,
+        "name": "Radiography",
+        "faculty_id": 144
+    },
+    {
+        "id": 167,
+        "name": "Rehabilitation",
+        "faculty_id": 144
+    },
+    {
+        "id": 148,
+        "name": "Religious Studies, Classics & Philosophy",
+        "faculty_id": 138
+    },
+    {
+        "id": 155,
+        "name": "Science, Mathematics and Technology Education",
+        "faculty_id": 141
+    },
+    {
+        "id": 186,
+        "name": "Social Work",
+        "faculty_id": 146
+    },
+    {
+        "id": 185,
+        "name": "Sociology",
+        "faculty_id": 146
+    },
+    {
+        "id": 139,
+        "name": "Soil Science & Agricultural Engineering",
+        "faculty_id": 137
+    },
+    {
+        "id": 182,
+        "name": "Statistics",
+        "faculty_id": 145
+    },
+    {
+        "id": 151,
+        "name": "Tourism, Leisure & Hospitality Management",
+        "faculty_id": 139
+    },
+    {
+        "id": 190,
+        "name": "Veterinary Medicine",
+        "faculty_id": 147
+    }
+]

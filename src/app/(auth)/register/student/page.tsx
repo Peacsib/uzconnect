@@ -1,15 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, GraduationCap, Loader2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, GraduationCap, Loader2, AlertCircle, Search } from "lucide-react";
 import { useProgrammes } from "@/hooks/useAcademicData";
 
 export default function RegisterStudentPage() {
@@ -19,6 +18,7 @@ export default function RegisterStudentPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [progSearch, setProgSearch] = useState("");
 
   // Form State
   const [formData, setFormData] = useState({
@@ -27,13 +27,25 @@ export default function RegisterStudentPage() {
     password: "",
     confirmPassword: "",
     regNumber: "",
-    programmeId: "1",
+    programmeId: "149", // Default: HWWMS (BSc Honours Water and Waste Management Systems) or first
     phone: "",
   });
 
   const handleChange = (field: string, val: string) => {
     setFormData((prev) => ({ ...prev, [field]: val }));
   };
+
+  // Derive email prefix
+  const emailPrefix = useMemo(() => {
+    if (!formData.email.includes("@")) return "";
+    return formData.email.split("@")[0].trim().toUpperCase();
+  }, [formData.email]);
+
+  // Check if regNumber matches email prefix
+  const isRegNumberMatching = useMemo(() => {
+    if (!emailPrefix || !formData.regNumber) return true;
+    return formData.regNumber.trim().toUpperCase() === emailPrefix;
+  }, [emailPrefix, formData.regNumber]);
 
   // Step 1 Validation
   const handleNext = () => {
@@ -42,7 +54,7 @@ export default function RegisterStudentPage() {
       return;
     }
     if (!formData.email.trim() || !formData.email.includes("@")) {
-      toast.error("Please enter a valid university or personal email.");
+      toast.error("Please enter your valid university email (e.g. R2421428@uofzmail.uz.ac.zw).");
       return;
     }
     if (formData.password.length < 6) {
@@ -53,14 +65,48 @@ export default function RegisterStudentPage() {
       toast.error("Passwords do not match.");
       return;
     }
+
+    // Auto-populate regNumber from email prefix if empty or default
+    const prefix = formData.email.split("@")[0].trim().toUpperCase();
+    if (prefix && (!formData.regNumber || formData.regNumber === "")) {
+      setFormData((prev) => ({ ...prev, regNumber: prefix }));
+    }
+
     setStep(2);
   };
+
+  // Filter programmes by code or name
+  const filteredProgrammes = useMemo(() => {
+    if (!programmes) return [];
+    if (!progSearch.trim()) return programmes;
+    const q = progSearch.toLowerCase();
+    return programmes.filter(
+      (p) => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q))
+    );
+  }, [programmes, progSearch]);
 
   // Step 2 Submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.regNumber.trim()) {
-      toast.error("Registration number is required (e.g. R214567A).");
+
+    const cleanReg = formData.regNumber.trim().toUpperCase();
+    const cleanPrefix = emailPrefix.trim().toUpperCase();
+
+    if (!cleanReg) {
+      toast.error("Registration number is required (e.g. R2421428).");
+      return;
+    }
+
+    // CRITICAL: Flag if email prefix does not match registration number
+    if (cleanPrefix && cleanReg !== cleanPrefix) {
+      toast.error(
+        `Registration number (${cleanReg}) must match your email prefix (${cleanPrefix}). Student emails are formatted as <regNumber>@uofzmail.uz.ac.zw.`
+      );
+      return;
+    }
+
+    if (!formData.programmeId) {
+      toast.error("Please select your degree programme.");
       return;
     }
 
@@ -73,7 +119,7 @@ export default function RegisterStudentPage() {
           fullName: formData.fullName.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
-          regNumber: formData.regNumber.trim().toUpperCase(),
+          regNumber: cleanReg,
           programmeId: Number(formData.programmeId),
           phone: formData.phone.trim(),
         }),
@@ -85,7 +131,7 @@ export default function RegisterStudentPage() {
       }
 
       toast.success("Account created successfully! You can now sign in.");
-      router.push("/login?registered=" + encodeURIComponent(formData.regNumber.trim().toUpperCase()));
+      router.push("/login?registered=" + encodeURIComponent(cleanReg));
     } catch (err: any) {
       toast.error(err.message || "Registration failed. Please check your details.");
     } finally {
@@ -129,7 +175,9 @@ export default function RegisterStudentPage() {
               <GraduationCap className="w-6 h-6 text-white" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Student Registration</h1>
-            <p className="text-xs text-gray-500 mt-0.5">Step {step} of 2: {step === 1 ? "Account Basics" : "Academic Info"}</p>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Step {step} of 2: {step === 1 ? "Account Basics" : "Academic Degree"}
+            </p>
 
             {/* Step Progress Pill Indicator */}
             <div className="flex items-center justify-center gap-2 mt-3">
@@ -170,14 +218,20 @@ export default function RegisterStudentPage() {
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-gray-700">Email Address</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-gray-700">University Student Email</Label>
+                    </div>
                     <Input
                       type="email"
-                      placeholder="student@students.uz.ac.zw"
+                      placeholder="e.g. R2421428@uofzmail.uz.ac.zw"
                       value={formData.email}
                       onChange={(e) => handleChange("email", e.target.value)}
                       className="mt-1 h-10 text-sm"
                     />
+                    <p className="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#ff8c00]" />
+                      Format: <strong className="text-gray-700">&lt;regNumber&gt;@uofzmail.uz.ac.zw</strong>
+                    </p>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2.5">
@@ -233,44 +287,68 @@ export default function RegisterStudentPage() {
                   className="space-y-4"
                 >
                   <div>
-                    <Label className="text-xs font-semibold text-gray-700">
-                      Registration Number
-                      <span className="text-[10px] text-gray-500 font-normal ml-1.5">(Format: R214567A)</span>
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-semibold text-gray-700">
+                        Registration Number
+                      </Label>
+                      {emailPrefix && (
+                        <span className="text-[11px] text-gray-500 font-mono">
+                          Email Prefix: <strong className="text-[#003366]">{emailPrefix}</strong>
+                        </span>
+                      )}
+                    </div>
                     <Input
-                      placeholder="e.g. R214567A"
+                      placeholder="e.g. R2421428"
                       value={formData.regNumber}
                       onChange={(e) => handleChange("regNumber", e.target.value)}
-                      className="mt-1 h-10 text-sm font-mono uppercase"
+                      className={`mt-1 h-10 text-sm font-mono uppercase font-bold tracking-wide ${
+                        !isRegNumberMatching ? "border-red-500 focus-visible:ring-red-500 bg-red-50/50" : ""
+                      }`}
                       autoFocus
                     />
+
+                    {/* Mismatch Warning Alert */}
+                    {!isRegNumberMatching && (
+                      <div className="mt-1.5 p-2 rounded-lg bg-red-50 border border-red-200 flex items-start gap-1.5 text-[11px] text-red-700 leading-tight">
+                        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>Registration number mismatch!</strong> Your email prefix is <strong>{emailPrefix}</strong>, so your registration number must be <strong>{emailPrefix}</strong>.
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div>
-                    <Label className="text-xs font-semibold text-gray-700">Degree Programme</Label>
-                    <Select
+                    <div className="flex items-center justify-between mb-1">
+                      <Label className="text-xs font-semibold text-gray-700">
+                        Degree Programme ({programmes?.length || 174} available)
+                      </Label>
+                    </div>
+
+                    {/* Search / Filter box */}
+                    <div className="relative mb-1.5">
+                      <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        placeholder="Search code or name (e.g. HWWMS, HCS)..."
+                        value={progSearch}
+                        onChange={(e) => setProgSearch(e.target.value)}
+                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#003366]"
+                      />
+                    </div>
+
+                    {/* Programme select box */}
+                    <select
                       value={formData.programmeId}
-                      onValueChange={(val) => handleChange("programmeId", val)}
+                      onChange={(e) => handleChange("programmeId", e.target.value)}
+                      className="w-full h-10 px-3 text-xs bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003366]"
                     >
-                      <SelectTrigger className="mt-1 h-10 text-sm">
-                        <SelectValue placeholder="Select your programme" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {programmes && programmes.length > 0 ? (
-                          programmes.map((p) => (
-                            <SelectItem key={p.id} value={String(p.id)}>
-                              {p.name}
-                            </SelectItem>
-                          ))
-                        ) : (
-                          <>
-                            <SelectItem value="1">BSc Honours Computer Science</SelectItem>
-                            <SelectItem value="2">BSc Honours Information Systems</SelectItem>
-                            <SelectItem value="3">BSc Honours Software Engineering</SelectItem>
-                          </>
-                        )}
-                      </SelectContent>
-                    </Select>
+                      {filteredProgrammes.map((p) => (
+                        <option key={p.id} value={String(p.id)}>
+                          {p.code ? `[${p.code}] ` : ""}{p.name}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                   <div>
@@ -297,8 +375,8 @@ export default function RegisterStudentPage() {
                     </Button>
                     <Button
                       type="submit"
-                      disabled={loading}
-                      className="flex-1 h-11 bg-gradient-to-r from-[#ff8c00] to-[#ffa726] hover:from-[#e67e00] hover:to-[#ff8c00] text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all"
+                      disabled={loading || !isRegNumberMatching}
+                      className="flex-1 h-11 bg-gradient-to-r from-[#ff8c00] to-[#ffa726] hover:from-[#e67e00] hover:to-[#ff8c00] text-white font-semibold rounded-xl flex items-center justify-center gap-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50"
                     >
                       {loading ? (
                         <>

@@ -27,8 +27,8 @@ export const studentRegSchema = z.object({
       return sanitized;
     }),
   regNumber: z.string()
-    .min(5, "Registration number is required (e.g. R214567A)")
-    .max(15, "Registration number is too long")
+    .min(4, "Registration number is required (e.g. R2421428)")
+    .max(20, "Registration number is too long")
     .transform((val) => val.trim().toUpperCase()),
   programmeId: z.coerce.number().min(1, "Please select your degree programme"),
   phone: z.string().optional(),
@@ -37,6 +37,13 @@ export const studentRegSchema = z.object({
 }).refine((d) => d.password === d.confirmPassword, {
   message: "Passwords do not match",
   path: ["confirmPassword"],
+}).refine((d) => {
+  const emailPrefix = d.email.split('@')[0].trim().toUpperCase();
+  const reg = d.regNumber.trim().toUpperCase();
+  return emailPrefix === reg;
+}, {
+  message: "Registration number must match your student email prefix (e.g. R2421428@uofzmail.uz.ac.zw)",
+  path: ["regNumber"],
 });
 
 export const supervisorRegSchema = z.object({

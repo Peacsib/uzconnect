@@ -1,143 +1,159 @@
 import { PrismaClient } from "@prisma/client"
 import bcrypt from "bcryptjs"
+import fs from "fs"
+import path from "path"
 
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log("Seeding database...")
+  console.log("Seeding database with full academic catalogue from official curriculum...")
 
-  // Faculties
-  const scienceFaculty = await prisma.faculty.upsert({
-    where: { name: "Faculty of Science and Technology" },
-    update: {},
-    create: { name: "Faculty of Science and Technology" },
-  })
-  const commerceFaculty = await prisma.faculty.upsert({
-    where: { name: "Faculty of Commerce" },
-    update: {},
-    create: { name: "Faculty of Commerce" },
-  })
+  // 1. Seed Faculties
+  const facultiesData = JSON.parse(fs.readFileSync(path.join(process.cwd(), "src/data/faculties.json"), "utf8"))
+  for (const f of facultiesData) {
+    await prisma.faculty.upsert({
+      where: { id: f.id },
+      update: { name: f.name },
+      create: { id: f.id, name: f.name },
+    })
+  }
+  console.log(`Seeded ${facultiesData.length} faculties.`)
 
-  // Departments
-  const csDept = await prisma.department.upsert({
-    where: { name_facultyId: { name: "Department of Computer Science", facultyId: scienceFaculty.id } },
-    update: {},
-    create: { name: "Department of Computer Science", facultyId: scienceFaculty.id },
-  })
-  const isDept = await prisma.department.upsert({
-    where: { name_facultyId: { name: "Department of Information Systems", facultyId: scienceFaculty.id } },
-    update: {},
-    create: { name: "Department of Information Systems", facultyId: scienceFaculty.id },
-  })
-  const seDept = await prisma.department.upsert({
-    where: { name_facultyId: { name: "Department of Software Engineering", facultyId: scienceFaculty.id } },
-    update: {},
-    create: { name: "Department of Software Engineering", facultyId: scienceFaculty.id },
-  })
-  const accDept = await prisma.department.upsert({
-    where: { name_facultyId: { name: "Department of Accounting", facultyId: commerceFaculty.id } },
-    update: {},
-    create: { name: "Department of Accounting", facultyId: commerceFaculty.id },
-  })
+  // 2. Seed Departments
+  const departmentsData = JSON.parse(fs.readFileSync(path.join(process.cwd(), "src/data/departments.json"), "utf8"))
+  for (const d of departmentsData) {
+    await prisma.department.upsert({
+      where: { id: d.id },
+      update: { name: d.name, facultyId: d.faculty_id },
+      create: { id: d.id, name: d.name, facultyId: d.faculty_id },
+    })
+  }
+  console.log(`Seeded ${departmentsData.length} departments.`)
 
-  // Programmes
-  const bscCs = await prisma.programme.upsert({
-    where: { code: "BSCCS" },
-    update: {},
-    create: { code: "BSCCS", name: "BSc Computer Science", duration: 4, departmentId: csDept.id },
-  })
-  const bscIs = await prisma.programme.upsert({
-    where: { code: "BSCIS" },
-    update: {},
-    create: { code: "BSCIS", name: "BSc Information Systems", duration: 4, departmentId: isDept.id },
-  })
-  const bscSe = await prisma.programme.upsert({
-    where: { code: "BSCSE" },
-    update: {},
-    create: { code: "BSCSE", name: "BSc Software Engineering", duration: 4, departmentId: seDept.id },
-  })
+  // 3. Seed Programmes (all 174 official degrees with codes)
+  const programmesData = JSON.parse(fs.readFileSync(path.join(process.cwd(), "src/data/programmes.json"), "utf8"))
+  for (const p of programmesData) {
+    await prisma.programme.upsert({
+      where: { code: p.code },
+      update: { name: p.name, departmentId: p.department_id, duration: 4 },
+      create: {
+        id: p.id,
+        code: p.code,
+        name: p.name,
+        departmentId: p.department_id,
+        duration: 4,
+      },
+    })
+  }
+  console.log(`Seeded ${programmesData.length} programmes.`)
 
-  // Companies
+  // 4. Seed Companies
   const econet = await prisma.company.upsert({
-    where: { id: "company-econet" },
-    update: {},
-    create: { id: "company-econet", name: "Econet Wireless", address: "1906 Borrowdale Rd", city: "Harare", email: "hr@econet.co.zw" },
-  })
-  const telone = await prisma.company.upsert({
-    where: { id: "company-telone" },
-    update: {},
-    create: { id: "company-telone", name: "TelOne", address: "107 Kwame Nkrumah Ave", city: "Harare", email: "hr@telone.co.zw" },
-  })
-
-  const hash = async (pw: string) => bcrypt.hash(pw, 12)
-
-  // Coordinator
-  await prisma.user.upsert({
-    where: { email: "coordinator@uz.ac.zw" },
+    where: { id: "comp_econet" },
     update: {},
     create: {
-      email: "coordinator@uz.ac.zw",
-      name: "Ms. Tsitsi Nhira",
-      passwordHash: await hash("coord123!"),
-      role: "COORDINATOR",
+      id: "comp_econet",
+      name: "Econet Wireless Zimbabwe",
+      email: "internships@econet.co.zw",
+      phone: "+263 242 486104",
+      address: "2 Old Mutare Road, Msasa",
+      city: "Harare",
     },
   })
 
-  // Lecturer
-  const lecturerUser = await prisma.user.upsert({
-    where: { email: "f.makudza@uz.ac.zw" },
+  const delta = await prisma.company.upsert({
+    where: { id: "comp_delta" },
     update: {},
     create: {
-      email: "f.makudza@uz.ac.zw",
-      name: "F. Makudza",
-      passwordHash: await hash("lecturer123!"),
-      role: "LECTURER",
-      lecturer: { create: { departmentId: csDept.id } },
+      id: "comp_delta",
+      name: "Delta Beverages",
+      email: "hr@delta.co.zw",
+      phone: "+263 242 750661",
+      address: "Sable House, Northridge Park",
+      city: "Harare",
     },
   })
 
-  // Supervisor
-  const supervisorUser = await prisma.user.upsert({
-    where: { email: "t.moyo@econet.co.zw" },
-    update: {},
-    create: {
-      email: "t.moyo@econet.co.zw",
-      name: "Tendai Moyo",
-      passwordHash: await hash("super123!"),
-      role: "SUPERVISOR",
-      supervisor: { create: { companyId: econet.id, position: "Senior Engineer", approved: true } },
-    },
-  })
+  // 5. Seed Demo Users
+  const passwordHash = await bcrypt.hash("takeMyWill0112#2004", 10)
+  const defaultPwHash = await bcrypt.hash("password123", 10)
 
-  // Student (from CSV: R2421428,Sibanda,Peace,BSCCS)
+  // Student 1
   const studentUser = await prisma.user.upsert({
-    where: { email: "R2421428@uofzmail.uz.ac.zw" },
+    where: { email: "student@uz.ac.zw" },
     update: {},
     create: {
-      email: "R2421428@uofzmail.uz.ac.zw",
-      name: "Peace Sibanda",
-      passwordHash: await hash("student123!"),
+      email: "student@uz.ac.zw",
+      name: "Tatenda Chidziwa",
+      passwordHash,
       role: "STUDENT",
-      regNumber: "R2421428",
+      regNumber: "R214567A",
       student: {
         create: {
-          regNumber: "R2421428",
-          programmeId: bscCs.id,
-          phone: "+263715582943",
+          regNumber: "R214567A",
+          programmeId: 166, // Computer Science / AI / Informatics
+          phone: "+263 77 123 4567",
         },
       },
     },
   })
 
-  console.log("✅ Seed complete!")
-  console.log("")
-  console.log("Demo accounts:")
-  console.log("  Coordinator: coordinator@uz.ac.zw / coord123!")
-  console.log("  Lecturer:    f.makudza@uz.ac.zw   / lecturer123!")
-  console.log("  Supervisor:  t.moyo@econet.co.zw  / super123!")
-  console.log("  Student:     R2421428@uofzmail.uz.ac.zw / student123!")
+  // Supervisor 1
+  const supervisorUser = await prisma.user.upsert({
+    where: { email: "supervisor@econet.co.zw" },
+    update: {},
+    create: {
+      email: "supervisor@econet.co.zw",
+      name: "Eng. Farai Mutasa",
+      passwordHash,
+      role: "SUPERVISOR",
+      supervisor: {
+        create: {
+          companyId: econet.id,
+          position: "Lead Software Architect",
+          approved: true,
+        },
+      },
+    },
+  })
+
+  // Lecturer 1
+  const lecturerUser = await prisma.user.upsert({
+    where: { email: "lecturer@science.uz.ac.zw" },
+    update: {},
+    create: {
+      email: "lecturer@science.uz.ac.zw",
+      name: "Dr. K. Nyambo",
+      passwordHash,
+      role: "LECTURER",
+      lecturer: {
+        create: {
+          departmentId: 140,
+        },
+      },
+    },
+  })
+
+  // Coordinator 1
+  const coordinatorUser = await prisma.user.upsert({
+    where: { email: "coordinator@science.uz.ac.zw" },
+    update: {},
+    create: {
+      email: "coordinator@science.uz.ac.zw",
+      name: "Prof. H. Ndlovu",
+      passwordHash,
+      role: "COORDINATOR",
+    },
+  })
+
+  console.log("Seeding complete! Database is now populated with full academic catalogue and demo accounts.")
 }
 
 main()
-  .then(() => prisma.$disconnect())
-  .catch(async (e) => { console.error(e); await prisma.$disconnect(); process.exit(1) })
+  .catch((e) => {
+    console.error(e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

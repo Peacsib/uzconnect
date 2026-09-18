@@ -1,40 +1,55 @@
 "use client";
 
-import { departments as deptList } from "@/utils/mockData";
+import staticFaculties from "@/data/faculties.json";
+import staticDepartments from "@/data/departments.json";
+import staticProgrammes from "@/data/programmes.json";
 
-export function useDepartments() {
-  const data = deptList.map((name, i) => ({ id: i + 1, name, faculty_id: 1 }));
-  return { data, isLoading: false };
+export interface AcademicProgramme {
+  id: number;
+  name: string;
+  code: string;
+  department_id: number;
 }
 
-export function useDepartmentsByFaculty(facultyId: any) {
-  const data = deptList.map((name, i) => ({ id: i + 1, name, faculty_id: facultyId || 1 }));
-  return { data, isLoading: false };
+export interface AcademicDepartment {
+  id: number;
+  name: string;
+  faculty_id: number;
+}
+
+export interface AcademicFaculty {
+  id: number;
+  name: string;
 }
 
 export function useFaculties() {
-  const data = [
-    { id: 1, name: "Faculty of Science" },
-    { id: 2, name: "Faculty of Engineering" },
-    { id: 3, name: "Faculty of Commerce" },
-  ];
-  return { data, isLoading: false };
+  return { data: staticFaculties as AcademicFaculty[], isLoading: false };
+}
+
+export function useDepartments() {
+  return { data: staticDepartments as AcademicDepartment[], isLoading: false };
+}
+
+export function useDepartmentsByFaculty(facultyId: any) {
+  const fId = Number(facultyId);
+  const data = fId ? staticDepartments.filter((d) => d.faculty_id === fId) : staticDepartments;
+  return { data: data as AcademicDepartment[], isLoading: false };
 }
 
 export function useProgrammes() {
-  const data = [
-    { id: 1, name: "BSc Honours Computer Science", department_id: 1 },
-    { id: 2, name: "BSc Honours Information Systems", department_id: 2 },
-    { id: 3, name: "BSc Honours Software Engineering", department_id: 3 },
-  ];
-  return { data, isLoading: false };
+  return { data: staticProgrammes as AcademicProgramme[], isLoading: false };
 }
 
 export function useProgrammesByDepartment(deptId: any) {
-  const data = [
-    { id: 1, name: "BSc Honours Computer Science", department_id: deptId || 1 },
-    { id: 2, name: "BSc Honours Information Systems", department_id: deptId || 2 },
-    { id: 3, name: "BSc Honours Software Engineering", department_id: deptId || 3 },
-  ];
-  return { data, isLoading: false };
+  const dId = Number(deptId);
+  const data = dId ? staticProgrammes.filter((p) => p.department_id === dId) : staticProgrammes;
+  return { data: data as AcademicProgramme[], isLoading: false };
+}
+
+export function useProgrammesByFaculty(facultyId: any) {
+  const fId = Number(facultyId);
+  if (!fId) return { data: staticProgrammes as AcademicProgramme[], isLoading: false };
+  const deptsInFac = new Set(staticDepartments.filter((d) => d.faculty_id === fId).map((d) => d.id));
+  const data = staticProgrammes.filter((p) => deptsInFac.has(p.department_id));
+  return { data: data as AcademicProgramme[], isLoading: false };
 }
