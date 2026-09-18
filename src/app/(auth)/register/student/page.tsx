@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, GraduationCap, Loader2, AlertCircle, Search } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Eye, EyeOff, GraduationCap, Loader2, AlertCircle } from "lucide-react";
+import { ProgrammeCombobox } from "@/components/academic/ProgrammeCombobox";
 import { useProgrammes } from "@/hooks/useAcademicData";
 
 export default function RegisterStudentPage() {
@@ -18,7 +19,7 @@ export default function RegisterStudentPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [progSearch, setProgSearch] = useState("");
+  
 
   // Form State
   const [formData, setFormData] = useState({
@@ -75,15 +76,7 @@ export default function RegisterStudentPage() {
     setStep(2);
   };
 
-  // Filter programmes by code or name
-  const filteredProgrammes = useMemo(() => {
-    if (!programmes) return [];
-    if (!progSearch.trim()) return programmes;
-    const q = progSearch.toLowerCase();
-    return programmes.filter(
-      (p) => p.name.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q))
-    );
-  }, [programmes, progSearch]);
+  
 
   // Step 2 Submission
   const handleSubmit = async (e: React.FormEvent) => {
@@ -319,36 +312,14 @@ export default function RegisterStudentPage() {
                   </div>
 
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <Label className="text-xs font-semibold text-gray-700">
-                        Degree Programme ({programmes?.length || 174} available)
-                      </Label>
-                    </div>
-
-                    {/* Search / Filter box */}
-                    <div className="relative mb-1.5">
-                      <Search className="w-3.5 h-3.5 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        placeholder="Search code or name (e.g. HWWMS, HCS)..."
-                        value={progSearch}
-                        onChange={(e) => setProgSearch(e.target.value)}
-                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#003366]"
-                      />
-                    </div>
-
-                    {/* Programme select box */}
-                    <select
+                    <Label className="text-xs font-semibold text-gray-700 mb-1.5 block">
+                      Degree Programme
+                    </Label>
+                    <ProgrammeCombobox
                       value={formData.programmeId}
-                      onChange={(e) => handleChange("programmeId", e.target.value)}
-                      className="w-full h-10 px-3 text-xs bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#003366]"
-                    >
-                      {filteredProgrammes.map((p) => (
-                        <option key={p.id} value={String(p.id)}>
-                          {p.code ? `[${p.code}] ` : ""}{p.name}
-                        </option>
-                      ))}
-                    </select>
+                      onValueChange={(val) => handleChange("programmeId", val)}
+                      placeholder="Search or select your degree programme..."
+                    />
                   </div>
 
                   <div>
