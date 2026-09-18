@@ -16,15 +16,7 @@ const AuthContext = createContext<AuthContextType | null>(null)
 
 function AuthInnerProvider({ children }: { children: React.ReactNode }) {
   const { data: session, status } = useSession()
-  const [user, setUser] = useState<AuthUser | null>(() => {
-    if (typeof window !== "undefined") {
-      const stored = localStorage.getItem("wrl_user")
-      if (stored) {
-        try { return JSON.parse(stored) } catch (_) {}
-      }
-    }
-    return null
-  })
+  const [user, setUser] = useState<AuthUser | null>(null)
 
   useEffect(() => {
     if (session?.user) {
@@ -39,8 +31,13 @@ function AuthInnerProvider({ children }: { children: React.ReactNode }) {
       if (typeof window !== "undefined") {
         localStorage.setItem("wrl_user", JSON.stringify(u))
       }
-    } else if (status === "unauthenticated" && !localStorage.getItem("wrl_user")) {
-      setUser(null)
+    } else if (status === "unauthenticated") {
+      const stored = typeof window !== "undefined" ? localStorage.getItem("wrl_user") : null;
+      if (stored) {
+        try { setUser(JSON.parse(stored)); } catch (_) { setUser(null); }
+      } else {
+        setUser(null);
+      }
     }
   }, [session, status])
 
