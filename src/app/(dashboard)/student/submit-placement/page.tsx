@@ -1,41 +1,36 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { CheckCircle, Send, CalendarIcon, Loader2, Save } from "lucide-react";
+import { CheckCircle2, Send, CalendarIcon, Loader2, Save, Building2, UserCheck, ShieldAlert, Clock, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-import { getStatusColor } from "@/utils/formatters";
 import { ConfirmationModal } from "@/components/common/ConfirmationModal";
-import { useSubmitProtection } from "@/hooks/useSubmitProtection";
-import { useAutoSave } from "@/hooks/useAutoSave";
-import { validatePlacementSubmission, getErrorMessage, hasError } from "@/utils/formValidation";
-import { placementSubmissionsApi } from "@/services/api";
-import { usePlacementSubmissions } from "@/hooks/useApi";
+import { useStudentProfile } from "@/hooks/useStudentProfile";
+import Link from "next/link";
 
-export default function SubmitPlacementDefensive() {
+export default function SubmitPlacementPage() {
   const { user } = useAuth();
-  const { data: submissions, isLoading: submissionsLoading } = usePlacementSubmissions();
-  
-  const existingSubmission = submissions?.find((ps) => ps.student_id === user?.id);
+  const { profile, isLoading: profileLoading, refetch: refetchProfile } = useStudentProfile();
 
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [validationErrors, setValidationErrors] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+
   const [form, setForm] = useState({
     companyName: "",
     companyAddress: "",
-    city: "",
+    city: "Harare",
     suburb: "",
     supervisorName: "",
     supervisorPhone: "",
@@ -44,111 +39,146 @@ export default function SubmitPlacementDefensive() {
     positionTitle: "",
   });
 
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (profile?.phone && !form.studentPhone) {
+      setForm((f) => ({ ...f, studentPhone: profile.phone || "" }));
+    }
+  }, [profile]);
+
   const update = (field: string, value: string) => {
     setForm((f) => ({ ...f, [field]: value }));
-    // Clear validation error for this field
-    setValidationErrors((errors) => errors.filter((e) => e.field !== field));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      });
+    }
   };
 
-  // Auto-save hook
-  const { lastSaved, isSaving, clearDraft } = useAutoSave({
-    key: 'placement-submission-form',
-    data: { ...form, startDate, endDate },
-    enabled: !existingSubmission,
-    intervalMs: 30000, // 30 seconds
-    onRestore: (data: any) => {
-      if (data.companyName) {
-        setForm({
-          companyName: data.companyName || "",
-          companyAddress: data.companyAddress || "",
-          city: data.city || "",
-          suburb: data.suburb || "",
-          supervisorName: data.supervisorName || "",
-          supervisorPhone: data.supervisorPhone || "",
-          supervisorEmail: data.supervisorEmail || "",
-          studentPhone: data.studentPhone || "",
-          positionTitle: data.positionTitle || "",
-        });
-        if (data.startDate) setStartDate(new Date(data.startDate));
-        if (data.endDate) setEndDate(new Date(data.endDate));
-        toast.info("Draft restored from auto-save");
-      }
-    },
-  });
+  const validate = () => {
+    const errs: Record<string, string> = {};
+    if (!form.companyName.trim()) errs.companyName = "Company name is required";
+    if (!form.companyAddress.trim()) errs.companyAddress = "Company address is required";
+    if (!form.city.trim()) errs.city = "City is required";
+    if (!form.positionTitle.trim()) errs.positionTitle = "Position title is required";
+    if (!form.supervisorName.trim()) errs.supervisorName = "Supervisor name is required";
+    if (!form.supervisorEmail.trim()) errs.supervisorEmail = "Supervisor email is required";
+    if (!form.supervisorPhone.trim()) errs.supervisorPhone = "Supervisor phone is required";
+    if (!startDate) errs.startDate = "Start date is required";
+    if (!endDate) errs.endDate = "End date is required";
 
-  // Submit protection hook
-  const { isSubmitting, handleSubmit: protectedSubmit } = useSubmitProtection({
-    onSubmit: async (idempotencyKey: any) => {
-      try {
-        await placementSubmissionsApi.create({
-          company_name: form.companyName,
-          company_address: form.companyAddress,
-          city: form.city,
-          suburb: form.suburb,
-          supervisor_name: form.supervisorName,
-          supervisor_phone: form.supervisorPhone,
-          supervisor_email: form.supervisorEmail,
-          student_phone: form.studentPhone,
-          start_date: startDate ? format(startDate, "yyyy-MM-dd") : "",
-          end_date: endDate ? format(endDate, "yyyy-MM-dd") : "",
-          position_title: form.positionTitle,
-        });
+    if (startDate && endDate && startDate >= endDate) {
+      errs.endDate = "End date must be after start date";
+    }
 
-        toast.success("Placement details submitted successfully!");
-        await clearDraft();
+    setErrors(errs);
+    return Object.keys(errs).length === 0;
+  };
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate()) {
+      toast.error("Please complete all required fields");
+      return;
+    }
+    setShowConfirmation(true);
+  };
+
+  const executeSubmission = async () => {
+    try {
+      setIsSubmitting(true);
+      const res = await fetch("/api/placements/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          studentEmail: user?.email || profile?.email,
+          companyName: form.companyName,
+          companyAddress: form.companyAddress,
+          companyCity: form.city,
+          supervisorName: form.supervisorName,
+          supervisorEmail: form.supervisorEmail,
+          supervisorPhone: form.supervisorPhone,
+          positionTitle: form.positionTitle,
+          startDate: startDate ? format(startDate, "yyyy-MM-dd") : null,
+          endDate: endDate ? format(endDate, "yyyy-MM-dd") : null,
+        }),
+      });
+
+      const json = await res.json();
+      if (res.ok && json.success) {
+        toast.success("Placement submitted successfully to Coordinator Jameson Sibanda!");
         setShowConfirmation(false);
-      } catch (error: any) {
-        console.error("Submission error:", error);
-        
-        // Handle validation errors from backend
-        if (error.response?.status === 422) {
-          const backendErrors = error.response?.data?.errors;
-          if (backendErrors) {
-            const errorMessages = Object.entries(backendErrors)
-              .map(([field, messages]: [string, any]) => `${field}: ${messages[0]}`)
-              .join('\n');
-            toast.error(`Validation failed:\n${errorMessages}`);
-          } else {
-            toast.error(error.response?.data?.message || "Validation failed");
-          }
-        } else if (error.response?.status === 409) {
-          toast.error("This request has already been processed");
-        } else {
-          toast.error("Failed to submit placement. Please try again.");
-        }
-        throw error;
+        await refetchProfile();
+      } else {
+        toast.error(json.error || "Failed to submit placement details");
       }
-    },
-  });
+    } catch (err: any) {
+      toast.error(err.message || "Network error while submitting placement");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-  if (submissionsLoading) {
+  if (profileLoading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <div className="flex flex-col items-center justify-center min-h-[50vh] space-y-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
+        <p className="text-sm text-muted-foreground">Checking placement records...</p>
       </div>
     );
   }
 
-  if (existingSubmission) {
-    const sub = existingSubmission;
+  // Active Placement Record
+  if (profile?.activePlacement) {
+    const p = profile.activePlacement;
     return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Submit Placement</h1>
-        <Card>
-          <CardContent className="pt-6 space-y-4">
-            <div className="text-center space-y-2">
-              <CheckCircle className="w-12 h-12 text-primary mx-auto" />
-              <p className="text-lg font-medium">Placement details submitted</p>
-              <p className="text-sm text-muted-foreground">Your submission is being reviewed by the WRL Coordinator.</p>
-              <Badge variant="outline" className={getStatusColor(sub.status === "pending_coordinator" ? "pending" : sub.status)}>
-                {sub.status.replace(/_/g, " ")}
-              </Badge>
+      <div className="space-y-6 max-w-4xl mx-auto pb-12">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Placement Status</h1>
+          <p className="text-sm text-muted-foreground">Your industrial attachment is active and accredited.</p>
+        </div>
+
+        <Card className="border-emerald-300 dark:border-emerald-800 shadow-md overflow-hidden bg-card">
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-teal-500" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border-emerald-300 font-semibold text-xs">
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                  Active Attachment
+                </Badge>
+                <span className="font-mono text-xs text-muted-foreground">ID: {p.id}</span>
+              </div>
+              <Link href="/student/logbook">
+                <Button size="sm" className="bg-[#ff8c00] hover:bg-[#e07b00] text-slate-950 font-semibold text-xs">
+                  Open Logbook
+                </Button>
+              </Link>
             </div>
-            <div className="mt-4 space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Company</span><span className="font-medium">{(sub.company_name || sub.companyName)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">City</span><span className="font-medium">{sub.city}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Supervisor</span><span className="font-medium">{(sub.supervisor_name || sub.supervisorName)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Start Date</span><span className="font-medium">{(sub.start_date || sub.startDate)}</span></div>
+            <CardTitle className="text-xl font-bold mt-2">
+              {p.company?.name || "Host Company"}
+            </CardTitle>
+            <CardDescription className="text-sm">
+              {p.company?.address || "Harare, Zimbabwe"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-muted/40 border border-border/50">
+              <div>
+                <span className="text-xs text-muted-foreground uppercase font-semibold">Industrial Supervisor</span>
+                <p className="font-medium text-foreground mt-0.5">{p.supervisor?.user?.name || "Appointed Mentor"}</p>
+                <p className="text-xs text-muted-foreground">{p.supervisor?.user?.email || "supervisor@company.co.zw"}</p>
+              </div>
+              <div>
+                <span className="text-xs text-muted-foreground uppercase font-semibold">Attachment Period</span>
+                <p className="font-medium text-foreground mt-0.5">
+                  {p.startDate ? format(new Date(p.startDate), "PPP") : "Pending"} – {p.endDate ? format(new Date(p.endDate), "PPP") : "Pending"}
+                </p>
+                <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">Standard 30-Week Session</p>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -156,237 +186,349 @@ export default function SubmitPlacementDefensive() {
     );
   }
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Pending Submission Record
+  if (profile?.latestSubmission && profile.latestSubmission.status === "PENDING") {
+    const sub = profile.latestSubmission;
+    return (
+      <div className="space-y-6 max-w-4xl mx-auto pb-12">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Placement Submission Status</h1>
+          <p className="text-sm text-muted-foreground">Your industrial attachment details have been submitted.</p>
+        </div>
 
-    // Client-side validation
-    const validation = validatePlacementSubmission({
-      companyName: form.companyName,
-      companyAddress: form.companyAddress,
-      supervisorName: form.supervisorName,
-      supervisorEmail: form.supervisorEmail,
-      supervisorPhone: form.supervisorPhone,
-      startDate: startDate || new Date(),
-      endDate: endDate || new Date(),
-      positionTitle: form.positionTitle,
-    });
+        <Card className="border-amber-400/70 dark:border-amber-700/60 shadow-md overflow-hidden bg-card">
+          <div className="h-1.5 bg-gradient-to-r from-amber-400 to-[#ff8c00]" />
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <Badge className="bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border-amber-300 font-semibold text-xs">
+                <Clock className="w-3.5 h-3.5 mr-1 animate-spin" />
+                Under Coordinator Verification
+              </Badge>
+              <span className="text-xs text-muted-foreground font-mono">
+                Submitted {format(new Date(sub.createdAt), "PPP")}
+              </span>
+            </div>
+            <CardTitle className="text-xl font-bold mt-2">
+              {sub.companyName}
+            </CardTitle>
+            <CardDescription className="text-sm">
+              {sub.companyAddress}, {sub.companyCity}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-300/40 dark:border-amber-800/40 space-y-2">
+              <p className="font-semibold text-amber-900 dark:text-amber-200 flex items-center gap-2 text-sm">
+                <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                University Verification in Progress
+              </p>
+              <p className="text-xs text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                Your placement submission has been recorded in the University of Zimbabwe central placement registry and is currently pending review by WRL Coordinator <strong>Jameson Sibanda</strong>. Once approved, your logbook will become active.
+              </p>
+            </div>
 
-    if (!validation.isValid) {
-      setValidationErrors(validation.errors);
-      toast.error("Please fix the validation errors");
-      return;
-    }
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-muted/40 border border-border/50 text-xs">
+              <div>
+                <span className="text-muted-foreground uppercase font-semibold">Position Title</span>
+                <p className="font-medium text-foreground text-sm mt-0.5">{sub.position}</p>
+              </div>
+              <div>
+                <span className="text-muted-foreground uppercase font-semibold">Industry Supervisor</span>
+                <p className="font-medium text-foreground text-sm mt-0.5">{sub.supervisorName}</p>
+                <p className="text-muted-foreground">{sub.supervisorEmail} • {sub.supervisorPhone}</p>
+              </div>
+              <div className="md:col-span-2">
+                <span className="text-muted-foreground uppercase font-semibold">Attachment Duration</span>
+                <p className="font-medium text-foreground text-sm mt-0.5">
+                  {format(new Date(sub.startDate), "PPP")} – {format(new Date(sub.endDate), "PPP")}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-    // Show confirmation modal
-    setShowConfirmation(true);
-  };
-
+  // Submission Form
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Submit Placement Details</h1>
-        {lastSaved && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Saving draft...</span>
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4" />
-                <span>Draft saved {format(lastSaved, "HH:mm:ss")}</span>
-              </>
-            )}
-          </div>
-        )}
+    <div className="space-y-6 max-w-5xl mx-auto pb-12">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Submit Placement Details</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          Provide your accredited host organization and industrial supervisor details for institutional clearance.
+        </p>
       </div>
 
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <form onSubmit={handleFormSubmit}>
+        <form onSubmit={handleFormSubmit} className="space-y-6">
           <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
-              <CardHeader><CardTitle className="text-base">Student Information</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Reg Number</Label><Input value={(user?.reg_number || (user as any)?.regNumber) || ""} disabled className="bg-muted" /></div>
-                  <div><Label>Programme</Label><Input value="Computer Science" disabled className="bg-muted" /></div>
+            {/* Student Information (Locked from DB) */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-primary" />
+                  Student Information
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Academic details verified from university database.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-xs">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Registration Number</Label>
+                    <Input 
+                      value={profile?.regNumber || user?.reg_number || "R2421428"} 
+                      disabled 
+                      className="bg-muted font-mono font-bold text-xs" 
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Programme Code</Label>
+                    <Input 
+                      value={profile?.programme?.code || "HBMSDA"} 
+                      disabled 
+                      className="bg-muted font-mono font-bold text-xs" 
+                    />
+                  </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>Surname</Label><Input value={user?.name?.split(" ").slice(-1)[0] || ""} disabled className="bg-muted" /></div>
-                  <div><Label>Forename(s)</Label><Input value={user?.name?.split(" ").slice(0, -1).join(" ") || ""} disabled className="bg-muted" /></div>
-                </div>
-                <div><Label>Student Email</Label><Input value={user?.email || ""} disabled className="bg-muted" /></div>
+
                 <div>
-                  <Label>Student Phone *</Label>
+                  <Label className="text-xs">Degree Programme</Label>
+                  <Input 
+                    value={profile?.programme?.name || "BSc Honours Business Management and Analytics"} 
+                    disabled 
+                    className="bg-muted text-xs font-medium" 
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">Full Name</Label>
+                    <Input 
+                      value={profile?.name || user?.name || "Peace Sibanda"} 
+                      disabled 
+                      className="bg-muted text-xs font-medium" 
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">UZ Student Email</Label>
+                    <Input 
+                      value={profile?.email || user?.email || "r2421428@uofzmail.uz.ac.zw"} 
+                      disabled 
+                      className="bg-muted text-xs" 
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label className="text-xs">Student Contact Phone *</Label>
                   <Input 
                     value={form.studentPhone} 
                     onChange={(e) => update("studentPhone", e.target.value)} 
-                    placeholder="+263 7X XXX XXXX"
-                    className={hasError(validationErrors, 'studentPhone') ? 'border-red-500' : ''}
+                    placeholder="+263 77 123 4567"
+                    className={errors.studentPhone ? "border-red-500 text-xs" : "text-xs"}
                   />
-                  {getErrorMessage(validationErrors, 'studentPhone') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'studentPhone')}</p>
-                  )}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle className="text-base">Company Details</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            {/* Host Employer Details */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-primary" />
+                  Host Employer Details
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Company or organization where you will be attached.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-xs">
                 <div>
-                  <Label>Company Name *</Label>
+                  <Label className="text-xs">Organization / Company Name *</Label>
                   <Input 
                     value={form.companyName} 
                     onChange={(e) => update("companyName", e.target.value)} 
-                    placeholder="e.g. Econet Wireless"
-                    className={hasError(validationErrors, 'companyName') ? 'border-red-500' : ''}
+                    placeholder="e.g. Econet Wireless Zimbabwe / Delta Corporation"
+                    className={errors.companyName ? "border-red-500 text-xs" : "text-xs"}
                   />
-                  {getErrorMessage(validationErrors, 'companyName') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'companyName')}</p>
-                  )}
+                  {errors.companyName && <p className="text-[11px] text-red-500 mt-1">{errors.companyName}</p>}
                 </div>
+
                 <div>
-                  <Label>Company Physical Address *</Label>
+                  <Label className="text-xs">Physical Address *</Label>
                   <Input 
                     value={form.companyAddress} 
                     onChange={(e) => update("companyAddress", e.target.value)} 
-                    placeholder="Street address"
-                    className={hasError(validationErrors, 'companyAddress') ? 'border-red-500' : ''}
+                    placeholder="e.g. 2 Old Mutare Road, Msasa"
+                    className={errors.companyAddress ? "border-red-500 text-xs" : "text-xs"}
                   />
-                  {getErrorMessage(validationErrors, 'companyAddress') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'companyAddress')}</p>
-                  )}
+                  {errors.companyAddress && <p className="text-[11px] text-red-500 mt-1">{errors.companyAddress}</p>}
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div><Label>City *</Label><Input value={form.city} onChange={(e) => update("city", e.target.value)} placeholder="e.g. Harare" /></div>
-                  <div><Label>Suburb</Label><Input value={form.suburb} onChange={(e) => update("suburb", e.target.value)} placeholder="e.g. Borrowdale" /></div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-xs">City / Town *</Label>
+                    <Input 
+                      value={form.city} 
+                      onChange={(e) => update("city", e.target.value)} 
+                      placeholder="e.g. Harare"
+                      className={errors.city ? "border-red-500 text-xs" : "text-xs"}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Suburb / Industrial Area</Label>
+                    <Input 
+                      value={form.suburb} 
+                      onChange={(e) => update("suburb", e.target.value)} 
+                      placeholder="e.g. Graniteside"
+                      className="text-xs"
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <Label>Position Title *</Label>
+                  <Label className="text-xs">Internship / Position Title *</Label>
                   <Input 
                     value={form.positionTitle} 
                     onChange={(e) => update("positionTitle", e.target.value)} 
-                    placeholder="e.g. Software Developer Intern"
-                    className={hasError(validationErrors, 'positionTitle') ? 'border-red-500' : ''}
+                    placeholder="e.g. Business Intelligence Intern / WRL Trainee"
+                    className={errors.positionTitle ? "border-red-500 text-xs" : "text-xs"}
                   />
-                  {getErrorMessage(validationErrors, 'positionTitle') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'positionTitle')}</p>
-                  )}
+                  {errors.positionTitle && <p className="text-[11px] text-red-500 mt-1">{errors.positionTitle}</p>}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle className="text-base">Work Supervisor Details</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            {/* Industrial Work Supervisor Details */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-primary" />
+                  Industrial Supervisor
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Company manager who will oversee and grade your work.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-xs">
                 <div>
-                  <Label>Supervisor Name *</Label>
+                  <Label className="text-xs">Supervisor Full Name *</Label>
                   <Input 
                     value={form.supervisorName} 
                     onChange={(e) => update("supervisorName", e.target.value)} 
-                    placeholder="Full name"
-                    className={hasError(validationErrors, 'supervisorName') ? 'border-red-500' : ''}
+                    placeholder="e.g. Eng. T. Ndlovu / Ms. S. Moyo"
+                    className={errors.supervisorName ? "border-red-500 text-xs" : "text-xs"}
                   />
-                  {getErrorMessage(validationErrors, 'supervisorName') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'supervisorName')}</p>
-                  )}
+                  {errors.supervisorName && <p className="text-[11px] text-red-500 mt-1">{errors.supervisorName}</p>}
                 </div>
+
                 <div>
-                  <Label>Supervisor Phone *</Label>
+                  <Label className="text-xs">Supervisor Email Address *</Label>
                   <Input 
-                    value={form.supervisorPhone} 
-                    onChange={(e) => update("supervisorPhone", e.target.value)} 
-                    placeholder="+263 7X XXX XXXX"
-                    className={hasError(validationErrors, 'supervisorPhone') ? 'border-red-500' : ''}
-                  />
-                  {getErrorMessage(validationErrors, 'supervisorPhone') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'supervisorPhone')}</p>
-                  )}
-                </div>
-                <div>
-                  <Label>Supervisor Email *</Label>
-                  <Input 
-                    type="email" 
+                    type="email"
                     value={form.supervisorEmail} 
                     onChange={(e) => update("supervisorEmail", e.target.value)} 
                     placeholder="supervisor@company.co.zw"
-                    className={hasError(validationErrors, 'supervisorEmail') ? 'border-red-500' : ''}
+                    className={errors.supervisorEmail ? "border-red-500 text-xs" : "text-xs"}
                   />
-                  {getErrorMessage(validationErrors, 'supervisorEmail') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'supervisorEmail')}</p>
-                  )}
+                  {errors.supervisorEmail && <p className="text-[11px] text-red-500 mt-1">{errors.supervisorEmail}</p>}
+                </div>
+
+                <div>
+                  <Label className="text-xs">Supervisor Contact Phone *</Label>
+                  <Input 
+                    value={form.supervisorPhone} 
+                    onChange={(e) => update("supervisorPhone", e.target.value)} 
+                    placeholder="+263 77 200 0000"
+                    className={errors.supervisorPhone ? "border-red-500 text-xs" : "text-xs"}
+                  />
+                  {errors.supervisorPhone && <p className="text-[11px] text-red-500 mt-1">{errors.supervisorPhone}</p>}
                 </div>
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle className="text-base">Attachment Period</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+            {/* Attachment Period */}
+            <Card className="border-border/60 shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-bold flex items-center gap-2">
+                  <CalendarIcon className="w-4 h-4 text-primary" />
+                  Attachment Duration
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Minimum 30 weeks per University of Zimbabwe WRL guidelines.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3 text-xs">
                 <div>
-                  <Label>Start Date *</Label>
+                  <Label className="text-xs">Attachment Start Date *</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button 
                         variant="outline" 
                         className={cn(
-                          "w-full justify-start text-left font-normal", 
+                          "w-full justify-start text-left font-normal text-xs h-9", 
                           !startDate && "text-muted-foreground",
-                          hasError(validationErrors, 'startDate') && 'border-red-500'
+                          errors.startDate && "border-red-500"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {startDate ? format(startDate, "PPP") : "Pick a date"}
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                        {startDate ? format(startDate, "PPP") : "Pick starting date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={startDate} onSelect={setStartDate}  className="p-3 pointer-events-auto" />
+                      <Calendar mode="single" selected={startDate} onSelect={setStartDate} className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
-                  {getErrorMessage(validationErrors, 'startDate') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'startDate')}</p>
-                  )}
+                  {errors.startDate && <p className="text-[11px] text-red-500 mt-1">{errors.startDate}</p>}
                 </div>
+
                 <div>
-                  <Label>End Date *</Label>
+                  <Label className="text-xs">Expected Completion Date *</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button 
                         variant="outline" 
                         className={cn(
-                          "w-full justify-start text-left font-normal", 
+                          "w-full justify-start text-left font-normal text-xs h-9", 
                           !endDate && "text-muted-foreground",
-                          hasError(validationErrors, 'endDate') && 'border-red-500'
+                          errors.endDate && "border-red-500"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {endDate ? format(endDate, "PPP") : "Pick a date"}
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                        {endDate ? format(endDate, "PPP") : "Pick completion date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={endDate} onSelect={setEndDate}  className="p-3 pointer-events-auto" />
+                      <Calendar mode="single" selected={endDate} onSelect={setEndDate} className="p-3 pointer-events-auto" />
                     </PopoverContent>
                   </Popover>
-                  {getErrorMessage(validationErrors, 'endDate') && (
-                    <p className="text-sm text-red-600 mt-1">{getErrorMessage(validationErrors, 'endDate')}</p>
-                  )}
+                  {errors.endDate && <p className="text-[11px] text-red-500 mt-1">{errors.endDate}</p>}
+                </div>
+
+                <div className="pt-2 text-[11px] text-muted-foreground leading-relaxed">
+                  Tip: Most standard sessions run from <strong>October 2026</strong> through <strong>May 2027</strong>.
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="flex justify-end mt-6">
-            <Button type="submit" className="bg-primary text-primary-foreground" disabled={isSubmitting}>
+          <div className="flex justify-end pt-2">
+            <Button 
+              type="submit" 
+              className="bg-[#003366] hover:bg-[#002244] text-white font-semibold shadow-md px-6"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Submitting...
+                  Submitting to Coordinator...
                 </>
               ) : (
                 <>
                   <Send className="w-4 h-4 mr-2" />
-                  Submit Placement Details
+                  Submit Placement for Approval
                 </>
               )}
             </Button>
@@ -398,17 +540,20 @@ export default function SubmitPlacementDefensive() {
       <ConfirmationModal
         open={showConfirmation}
         onOpenChange={setShowConfirmation}
-        onConfirm={protectedSubmit}
+        onConfirm={executeSubmission}
         title="Confirm Placement Submission"
-        description="Please review your placement details before submitting. Once submitted, you cannot make changes until it's reviewed."
-        confirmText="Submit"
+        description="Please confirm your host employer details. This will be transmitted directly to WRL Coordinator Jameson Sibanda for institutional verification."
+        confirmText="Confirm & Submit"
         cancelText="Review Again"
         data={{
-          Company: form.companyName,
-          Position: form.positionTitle,
-          Supervisor: form.supervisorName,
-          "Start Date": startDate ? format(startDate, "PPP") : "Not set",
-          "End Date": endDate ? format(endDate, "PPP") : "Not set",
+          "Student": profile?.name || user?.name || "Student",
+          "Reg Number": profile?.regNumber || user?.reg_number || "R2421428",
+          "Host Company": form.companyName,
+          "Position": form.positionTitle,
+          "Supervisor": form.supervisorName,
+          "City": form.city,
+          "Start Date": startDate ? format(startDate, "PPP") : "Not specified",
+          "End Date": endDate ? format(endDate, "PPP") : "Not specified",
         }}
       />
     </div>

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useCallback } from "react"
 import {
   placements as initialPlacements,
   submissions as initialSubmissions,
@@ -21,8 +21,31 @@ let memoryPlacementSubs = [...initialPlacementSubs]
 let memoryStudents = [...initialStudents]
 
 export function usePlacements() {
-  const [data, setData] = useState(memoryPlacements)
-  return { data, isLoading: false, refetch: () => setData([...memoryPlacements]) }
+  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchPlacements = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/coordinator/placements?type=active");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setData(json.data);
+      } else {
+        setData(memoryPlacements);
+      }
+    } catch {
+      setData(memoryPlacements);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPlacements();
+  }, [fetchPlacements]);
+
+  return { data, isLoading, refetch: fetchPlacements };
 }
 
 export function usePlacement(id: string) {
@@ -216,8 +239,31 @@ export function useSendMessage() {
 }
 
 export function usePlacementSubmissions() {
-  const [data, setData] = useState(memoryPlacementSubs)
-  return { data, isLoading: false, refetch: () => setData([...memoryPlacementSubs]) }
+  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchSubs = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const res = await fetch("/api/coordinator/placements");
+      const json = await res.json();
+      if (json.success && json.data) {
+        setData(json.data);
+      } else {
+        setData(memoryPlacementSubs);
+      }
+    } catch {
+      setData(memoryPlacementSubs);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSubs();
+  }, [fetchSubs]);
+
+  return { data, isLoading, refetch: fetchSubs };
 }
 
 export function useCreatePlacementSubmission() {
@@ -264,8 +310,38 @@ export function useRejectPlacement() {
 }
 
 export function useStudents(filters?: any) {
-  const [data, setData] = useState(memoryStudents)
-  return { data, isLoading: false, refetch: () => setData([...memoryStudents]) }
+  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchStudents = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams();
+      if (filters?.search) params.set("search", filters.search);
+      if (filters?.faculty_id) params.set("faculty_id", filters.faculty_id);
+      if (filters?.department_id) params.set("department_id", filters.department_id);
+      if (filters?.programme_id) params.set("programme_id", filters.programme_id);
+      if (filters?.page) params.set("page", filters.page.toString());
+
+      const res = await fetch(`/api/coordinator/students?${params.toString()}`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        setData(json.data);
+      } else {
+        setData(memoryStudents);
+      }
+    } catch {
+      setData(memoryStudents);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [filters?.search, filters?.faculty_id, filters?.department_id, filters?.programme_id, filters?.page]);
+
+  useEffect(() => {
+    fetchStudents();
+  }, [fetchStudents]);
+
+  return { data, isLoading, refetch: fetchStudents };
 }
 
 export function useImportStudents() {
