@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-
-import { useState, useEffect, useMemo } from "react";
-
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,10 +12,22 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Eye, EyeOff, LogIn, UserPlus, Building2, GraduationCap, ChevronDown, BookOpen, Users, CheckCircle, Wifi, Lock } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  LogIn,
+  Building2,
+  GraduationCap,
+  BookOpen,
+  Users,
+  CheckCircle,
+  Wifi,
+  Lock,
+  ArrowRight,
+  Sparkles,
+} from "lucide-react";
 
-
-// Cloudinary CDN URLs for optimized static assets
+// Optimized static assets
 const UZ_CREST = "/uz-crest.png";
 const BG_IMAGE = "/homepage-background.webp";
 
@@ -44,43 +54,123 @@ const features = [
   },
 ];
 
-// Memoized animation variants to prevent recreation
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 }
+// WhatsApp Status / Stories 3D Cube Rotation Variants
+const cubeVariants = {
+  enter: (direction: number) => ({
+    rotateY: direction > 0 ? 82 : -82,
+    transformOrigin: direction > 0 ? "right center" : "left center",
+    scale: 0.93,
+    opacity: 0.82,
+  }),
+  center: {
+    rotateY: 0,
+    transformOrigin: "center center",
+    scale: 1,
+    opacity: 1,
+    transition: {
+      duration: 0.65,
+      ease: [0.32, 0.72, 0, 1] as [number, number, number, number], // iOS / WhatsApp spring physics bezier
+    },
+  },
+  exit: (direction: number) => ({
+    rotateY: direction > 0 ? -82 : 82,
+    transformOrigin: direction > 0 ? "left center" : "right center",
+    scale: 0.93,
+    opacity: 0.82,
+    transition: {
+      duration: 0.65,
+      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+    },
+  }),
 };
 
-const fadeInDown = {
-  initial: { opacity: 0, y: -20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6 }
+// 3D dynamic lighting shadow overlay that darkens the receding face
+const shadowVariants = {
+  enter: {
+    opacity: 0.45,
+    transition: { duration: 0.65, ease: "easeInOut" as const },
+  },
+  center: {
+    opacity: 0,
+    transition: { duration: 0.65, ease: "easeInOut" as const },
+  },
+  exit: {
+    opacity: 0.45,
+    transition: { duration: 0.65, ease: "easeInOut" as const },
+  },
 };
 
 export default function HomePage() {
-  const [tab, setTab] = useState<"signin" | "register">("signin");
-  const [showPassword, setShowPassword] = useState(false);
-  const { login, isLoading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { login, isLoading } = useAuth();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>({
+  const isFromCube = searchParams.get("cube") === "1";
+  const registeredParam = searchParams.get("registered");
+  const emailParam = searchParams.get("email");
+  const initialEmail = emailParam || (registeredParam && registeredParam !== "true" ? registeredParam : "");
+
+  const [tab, setTab] = useState<"signin" | "register">("signin");
+  const [direction, setDirection] = useState<number>(isFromCube ? -1 : 1);
+  const [showPassword, setShowPassword] = useState(false);
+  const toastFiredRef = useRef(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+  } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: initialEmail || "",
+      password: "",
+    },
   });
+
+  // Autofill email and auto-focus password when redirected from registration
+  useEffect(() => {
+    if (initialEmail) {
+      setValue("email", initialEmail);
+      setTab("signin");
+
+      if (!toastFiredRef.current && (registeredParam || isFromCube)) {
+        toastFiredRef.current = true;
+        toast.success("Account created successfully! Please enter your password to sign in.", {
+          duration: 5000,
+        });
+      }
+
+      // Auto-focus password input after 3D cube rotation completes smoothly
+      const timer = setTimeout(() => {
+        const pwInput = document.getElementById("login-password-input");
+        if (pwInput) {
+          pwInput.focus();
+        }
+      }, 700);
+
+      return () => clearTimeout(timer);
+    }
+  }, [initialEmail, setValue, registeredParam, isFromCube]);
 
   // Force light mode on homepage
   useEffect(() => {
-    document.documentElement.classList.remove('dark');
+    document.documentElement.classList.remove("dark");
     return () => {
-      // Restore user's theme preference when leaving the page
-      const theme = localStorage.getItem('theme');
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
+      const theme = localStorage.getItem("theme");
+      if (theme === "dark") {
+        document.documentElement.classList.add("dark");
       }
     };
   }, []);
 
+  const handleTabChange = (newTab: "signin" | "register") => {
+    if (newTab === tab) return;
+    setDirection(newTab === "register" ? 1 : -1);
+    setTab(newTab);
+  };
+
   const onLogin = async (data: LoginFormData) => {
-    // Backend expects 'username' field (can be email or reg number)
     const success = await login(data.email, data.password);
     if (success) {
       toast.success("Welcome back!");
@@ -108,7 +198,7 @@ export default function HomePage() {
         {/* Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/85 via-[#002147]/75 to-[#003d66]/80" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
-        
+
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-6 text-white flex-1">
           {/* Top branding */}
@@ -132,32 +222,46 @@ export default function HomePage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="space-y-4 flex-1 flex flex-col justify-center"
           >
-            <h2 className="text-3xl font-bold leading-tight tracking-tight" style={{ textShadow: '0 2px 16px rgba(0,0,0,0.5)' }}>
-              <span 
+            <h2
+              className="text-3xl font-bold leading-tight tracking-tight"
+              style={{ textShadow: "0 2px 16px rgba(0,0,0,0.5)" }}
+            >
+              <span
                 className="inline-block relative"
-                style={{ 
+                style={{
                   fontFamily: "'Playfair Display', serif",
-                  fontStyle: 'italic',
-                  fontSize: '1.15em',
+                  fontStyle: "italic",
+                  fontSize: "1.15em",
                   fontWeight: 600,
-                  color: '#ffa726',
-                  textShadow: '0 2px 20px rgba(255, 140, 0, 0.4), 0 0 30px rgba(255, 140, 0, 0.2)'
+                  color: "#ffa726",
+                  textShadow:
+                    "0 2px 20px rgba(255, 140, 0, 0.4), 0 0 30px rgba(255, 140, 0, 0.2)",
                 }}
               >
                 Your
-                <svg className="absolute -bottom-1 left-0 w-full h-2" viewBox="0 0 100 8" preserveAspectRatio="none">
-                  <path d="M0,7 Q25,0 50,5 T100,4" stroke="#ff8c00" strokeWidth="1.5" fill="none" opacity="0.6" />
+                <svg
+                  className="absolute -bottom-1 left-0 w-full h-2"
+                  viewBox="0 0 100 8"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0,7 Q25,0 50,5 T100,4"
+                    stroke="#ff8c00"
+                    strokeWidth="1.5"
+                    fill="none"
+                    opacity="0.6"
+                  />
                 </svg>
-              </span>
-              {" "}Work-Related
+              </span>{" "}
+              Work-Related
               <br />
               Learning Journey,
               <br />
               <span className="text-[#ff8c00]">Simplified.</span>
             </h2>
             <p className="text-sm text-white/90 max-w-md leading-relaxed font-normal">
-              Manage placements, submit logbooks, and stay connected with your
-              supervisors and lecturers — all in one platform.
+              Manage placements, submit logbooks, and stay connected with your supervisors and
+              lecturers — all in one platform.
             </p>
           </motion.div>
 
@@ -200,7 +304,12 @@ export default function HomePage() {
               transition={{ duration: 1.5, repeat: Infinity }}
               className="inline-block"
             >
-              <svg className="w-6 h-6 text-white/70 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6 text-white/70 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
             </motion.div>
@@ -217,11 +326,9 @@ export default function HomePage() {
           backgroundPosition: "center",
         }}
       >
-        {/* Improved overlay - more transparent to show campus */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/80 via-[#002147]/70 to-[#003d66]/75" />
-        {/* Subtle vignette effect */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20" />
-        
+
         {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
           {/* Top branding */}
@@ -238,39 +345,53 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          {/* Center tagline with stylish cursive */}
+          {/* Center tagline */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
             className="space-y-4"
           >
-            <h2 className="text-4xl font-bold leading-tight tracking-tight" style={{ textShadow: '0 2px 16px rgba(0,0,0,0.5)' }}>
-              <span 
+            <h2
+              className="text-4xl font-bold leading-tight tracking-tight"
+              style={{ textShadow: "0 2px 16px rgba(0,0,0,0.5)" }}
+            >
+              <span
                 className="inline-block relative"
-                style={{ 
+                style={{
                   fontFamily: "'Playfair Display', serif",
-                  fontStyle: 'italic',
-                  fontSize: '1.15em',
+                  fontStyle: "italic",
+                  fontSize: "1.15em",
                   fontWeight: 600,
-                  color: '#ffa726',
-                  textShadow: '0 2px 20px rgba(255, 140, 0, 0.4), 0 0 30px rgba(255, 140, 0, 0.2)'
+                  color: "#ffa726",
+                  textShadow:
+                    "0 2px 20px rgba(255, 140, 0, 0.4), 0 0 30px rgba(255, 140, 0, 0.2)",
                 }}
               >
                 Your
-                <svg className="absolute -bottom-1 left-0 w-full h-2" viewBox="0 0 100 8" preserveAspectRatio="none">
-                  <path d="M0,7 Q25,0 50,5 T100,4" stroke="#ff8c00" strokeWidth="1.5" fill="none" opacity="0.6" />
+                <svg
+                  className="absolute -bottom-1 left-0 w-full h-2"
+                  viewBox="0 0 100 8"
+                  preserveAspectRatio="none"
+                >
+                  <path
+                    d="M0,7 Q25,0 50,5 T100,4"
+                    stroke="#ff8c00"
+                    strokeWidth="1.5"
+                    fill="none"
+                    opacity="0.6"
+                  />
                 </svg>
-              </span>
-              {" "}Work-Related
+              </span>{" "}
+              Work-Related
               <br />
               Learning Journey,
               <br />
               <span className="text-[#ff8c00]">Simplified.</span>
             </h2>
             <p className="text-base text-white/90 max-w-md leading-relaxed font-normal">
-              Manage placements, submit logbooks, and stay connected with your
-              supervisors and lecturers — all in one platform.
+              Manage placements, submit logbooks, and stay connected with your supervisors and
+              lecturers — all in one platform.
             </p>
           </motion.div>
 
@@ -302,64 +423,79 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Right Auth Panel - Second Screen on Mobile */}
-      <div className="min-h-screen lg:min-h-0 flex-1 lg:w-1/2 flex items-center justify-center p-6 lg:p-12 bg-gradient-to-br from-[#0a0e14] via-[#0f1419] to-[#1a1f2e] relative">
-        {/* Decorative elements - desktop only */}
+      {/* Right Auth Panel - 3D Perspective Stage Container */}
+      <div className="min-h-screen lg:min-h-0 flex-1 lg:w-1/2 flex items-center justify-center p-6 lg:p-12 bg-gradient-to-br from-[#0a0e14] via-[#0f1419] to-[#1a1f2e] relative overflow-hidden">
+        {/* Decorative elements */}
         <div className="hidden lg:block absolute top-10 right-10 w-32 h-32 bg-[#ff8c00]/5 rounded-full blur-3xl" />
         <div className="hidden lg:block absolute bottom-10 left-10 w-40 h-40 bg-[#003366]/10 rounded-full blur-3xl" />
 
-        {/* Auth Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="w-full max-w-[420px] relative z-10"
+        {/* 3D Cube Perspective Viewport */}
+        <div
+          className="w-full max-w-[420px] relative z-10 py-6"
+          style={{
+            perspective: "1400px",
+            perspectiveOrigin: "center center",
+          }}
         >
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl overflow-hidden border border-white/20">
-            {/* Accent bar with gradient */}
-            <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726]" />
+          <AnimatePresence mode="wait" initial={isFromCube} custom={direction}>
+            {tab === "signin" ? (
+              <motion.div
+                key="signin-cube-face"
+                custom={direction}
+                variants={cubeVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                style={{
+                  transformStyle: "preserve-3d",
+                  backfaceVisibility: "hidden",
+                }}
+                className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 relative"
+              >
+                {/* 3D Dynamic Ambient Shadow Overlay */}
+                <motion.div
+                  variants={shadowVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
+                />
 
-            {/* Card header - desktop only */}
-            <div className="hidden lg:block px-8 pt-6 pb-3 text-center border-b border-gray-100">
-              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#003366] to-[#002147] mb-2 shadow-lg">
-                <img src={UZ_CREST} alt="UZ Crest" className="w-9 h-9" />
-              </div>
-              <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">WRL Connect</h1>
-              <p className="text-[11px] text-gray-500 font-medium">Work-Related Learning Platform</p>
-            </div>
+                {/* Accent bar with gradient */}
+                <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726]" />
 
-            {/* Tabs */}
-            <div className="px-6 lg:px-8 pt-5 lg:pt-4">
-              <div className="flex bg-gray-50 rounded-xl p-1 border border-gray-200">
-                {(["signin", "register"] as const).map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTab(t)}
-                    className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 ${
-                      tab === t
-                        ? "bg-white text-gray-900 shadow-md"
-                        : "text-gray-500 hover:text-gray-700"
-                    }`}
-                  >
-                    {t === "signin" ? "SIGN IN" : "REGISTER"}
-                  </button>
-                ))}
-              </div>
-            </div>
+                {/* Card header */}
+                <div className="px-8 pt-6 pb-2 text-center border-b border-gray-100">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#003366] to-[#002147] mb-2 shadow-lg">
+                    <img src={UZ_CREST} alt="UZ Crest" className="w-9 h-9" />
+                  </div>
+                  <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">WRL Connect</h1>
+                  <p className="text-[11px] text-gray-500 font-medium">Work-Related Learning Platform</p>
+                </div>
 
-            {/* Form content */}
-            <div className="px-6 lg:px-8 py-5">
-              <AnimatePresence mode="wait">
-                {tab === "signin" ? (
-                  <motion.form
-                    key="signin"
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 10 }}
-                    transition={{ duration: 0.2 }}
-                    onSubmit={handleSubmit(onLogin)}
-                    className="space-y-3.5"
-                  >
+                {/* Tabs */}
+                <div className="px-6 lg:px-8 pt-4">
+                  <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("signin")}
+                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
+                    >
+                      SIGN IN
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("register")}
+                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
+                    >
+                      REGISTER
+                    </button>
+                  </div>
+                </div>
+
+                {/* Form content */}
+                <div className="px-6 lg:px-8 py-5">
+                  <form onSubmit={handleSubmit(onLogin)} className="space-y-3.5">
                     <div>
                       <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1.5 block">
                         Email
@@ -371,12 +507,18 @@ export default function HomePage() {
                         placeholder="Enter your email or registration number"
                         className="h-10 text-sm border-gray-300 focus:border-[#ff8c00] focus:ring-[#ff8c00] rounded-lg"
                       />
-                      {errors.email && <p className="text-red-600 text-xs mt-1 font-medium">{errors.email.message}</p>}
+                      {errors.email && (
+                        <p className="text-red-600 text-xs mt-1 font-medium">{errors.email.message}</p>
+                      )}
                     </div>
+
                     <div>
-                      <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1.5 block">Password</Label>
+                      <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1.5 block">
+                        Password
+                      </Label>
                       <div className="relative">
                         <Input
+                          id="login-password-input"
                           {...register("password")}
                           type={showPassword ? "text" : "password"}
                           autoComplete="current-password"
@@ -391,11 +533,16 @@ export default function HomePage() {
                           {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
-                      {errors.password && <p className="text-red-600 text-xs mt-1 font-medium">{errors.password.message}</p>}
+                      {errors.password && (
+                        <p className="text-red-600 text-xs mt-1 font-medium">{errors.password.message}</p>
+                      )}
                     </div>
 
                     <div className="text-right">
-                      <Link href="/forgot-password" className="text-xs text-gray-500 hover:text-gray-700 transition-colors">
+                      <Link
+                        href="/forgot-password"
+                        className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                      >
                         Forgot password?
                       </Link>
                     </div>
@@ -416,78 +563,139 @@ export default function HomePage() {
                     </Button>
 
                     {/* Secure badge */}
-                    <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500">
-                      <Lock className="w-3 h-3" />
+                    <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500 pt-1">
+                      <Lock className="w-3.5 h-3.5 text-emerald-600" />
                       <span className="font-medium">Secure, encrypted connection</span>
                     </div>
+                  </form>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="register-cube-face"
+                custom={direction}
+                variants={cubeVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                style={{
+                  transformStyle: "preserve-3d",
+                  backfaceVisibility: "hidden",
+                }}
+                className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 relative"
+              >
+                {/* 3D Dynamic Ambient Shadow Overlay */}
+                <motion.div
+                  variants={shadowVariants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
+                />
 
-                  </motion.form>
-                ) : (
-                  <motion.div
-                    key="register"
-                    initial={{ opacity: 0, x: 10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -10 }}
-                    transition={{ duration: 0.2 }}
-                    className="space-y-2.5"
-                  >
-                    <Link href="/register/student" className="block">
-                      <Button
-                        variant="outline"
-                        className="w-full h-auto py-3 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                          <GraduationCap className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
-                            Register as Student
-                            <span className="text-[10px] bg-blue-100 text-[#003366] px-1.5 py-0.5 rounded font-semibold">Self-Service</span>
-                          </div>
-                          <div className="text-[11px] text-gray-500">For UZ students preparing for or on attachment</div>
-                        </div>
-                      </Button>
-                    </Link>
+                {/* Accent bar with gradient */}
+                <div className="h-1.5 bg-gradient-to-r from-[#ff8c00] via-[#ffa726] to-[#003366]" />
 
-                    <Link href="/register/supervisor" className="block">
-                      <Button
-                        variant="outline"
-                        className="w-full h-auto py-3 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                          <Building2 className="w-5 h-5 text-white" />
-                        </div>
-                        <div className="text-left">
-                          <div className="font-bold text-gray-900 text-sm">Register as Supervisor</div>
-                          <div className="text-[11px] text-gray-500">Industry company mentors supervising interns</div>
-                        </div>
-                      </Button>
-                    </Link>
+                {/* Card header */}
+                <div className="px-8 pt-6 pb-2 text-center border-b border-gray-100">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff8c00] to-[#e65100] mb-2 shadow-lg">
+                    <Sparkles className="w-8 h-8 text-white" />
+                  </div>
+                  <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">Create Account</h1>
+                  <p className="text-[11px] text-gray-500 font-medium">Select your portal role to register</p>
+                </div>
 
-                    <Link href="/register/lecturer" className="block">
-                      <Button
-                        variant="outline"
-                        className="w-full h-auto py-3 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group"
-                      >
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                          <BookOpen className="w-5 h-5 text-white" />
+                {/* Tabs */}
+                <div className="px-6 lg:px-8 pt-4">
+                  <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("signin")}
+                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
+                    >
+                      SIGN IN
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("register")}
+                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
+                    >
+                      REGISTER
+                    </button>
+                  </div>
+                </div>
+
+                {/* Registration options */}
+                <div className="px-6 lg:px-8 py-5 space-y-3">
+                  <Link href="/register/student" className="block">
+                    <Button
+                      variant="outline"
+                      className="w-full h-auto py-3 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                        <GraduationCap className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
+                          Register as Student
+                          <span className="text-[10px] bg-blue-100 text-[#003366] px-1.5 py-0.5 rounded font-semibold">
+                            Self-Service
+                          </span>
                         </div>
-                        <div className="text-left">
-                          <div className="font-bold text-gray-900 text-sm">Register as Lecturer</div>
-                          <div className="text-[11px] text-gray-500">University academic staff & placement assessors</div>
-                        </div>
-                      </Button>
-                    </Link>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+                        <div className="text-[11px] text-gray-500">For UZ students preparing for or on attachment</div>
+                      </div>
+                    </Button>
+                  </Link>
+
+                  <Link href="/register/supervisor" className="block">
+                    <Button
+                      variant="outline"
+                      className="w-full h-auto py-3 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                        <Building2 className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-bold text-gray-900 text-sm">Register as Supervisor</div>
+                        <div className="text-[11px] text-gray-500">Industry company mentors supervising interns</div>
+                      </div>
+                    </Button>
+                  </Link>
+
+                  <Link href="/register/lecturer" className="block">
+                    <Button
+                      variant="outline"
+                      className="w-full h-auto py-3 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                    >
+                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                        <BookOpen className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="text-left">
+                        <div className="font-bold text-gray-900 text-sm">Register as Lecturer</div>
+                        <div className="text-[11px] text-gray-500">University academic staff & placement assessors</div>
+                      </div>
+                    </Button>
+                  </Link>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("signin")}
+                      className="text-xs text-[#003366] font-semibold hover:underline inline-flex items-center gap-1"
+                    >
+                      Already have an account? Sign in here
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <p className="text-center text-[11px] text-white/60 lg:text-gray-500 mt-5">
             © {new Date().getFullYear()} University of Zimbabwe · WRL Connect
           </p>
-        </motion.div>
+        </div>
       </div>
     </div>
   );

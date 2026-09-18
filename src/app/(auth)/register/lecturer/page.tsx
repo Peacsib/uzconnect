@@ -19,6 +19,7 @@ export default function RegisterLecturerPage() {
   const [step, setStep] = useState<1 | 2>(1);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isSuccessExit, setIsSuccessExit] = useState(false);
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -75,8 +76,12 @@ export default function RegisterLecturerPage() {
         throw new Error(data.error || "Failed to register lecturer account.");
       }
 
-      toast.success("Lecturer account registered! You can now sign in.");
-      router.push("/login?registered=" + encodeURIComponent(formData.email.trim()));
+      const registeredEmail = formData.email.trim().toLowerCase();
+      setIsSuccessExit(true);
+      toast.success("Lecturer account registered! Preparing sign-in...", { duration: 3000 });
+      setTimeout(() => {
+        router.push(`/login?email=${encodeURIComponent(registeredEmail)}&registered=true&cube=1`);
+      }, 480);
     } catch (err: any) {
       toast.error(err.message || "Registration failed. Please check your details.");
     } finally {
@@ -91,11 +96,9 @@ export default function RegisterLecturerPage() {
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/90 via-[#002147]/85 to-[#003d66]/90" />
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4 }}
+      <div
         className="w-full max-w-md relative z-10"
+        style={{ perspective: "1400px", perspectiveOrigin: "center center" }}
       >
         <div className="mb-4">
           <Link
@@ -107,7 +110,32 @@ export default function RegisterLecturerPage() {
           </Link>
         </div>
 
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20">
+        <motion.div
+          animate={
+            isSuccessExit
+              ? {
+                  rotateY: -82,
+                  transformOrigin: "right center",
+                  scale: 0.93,
+                  opacity: 0.8,
+                  transition: {
+                    duration: 0.5,
+                    ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+                  },
+                }
+              : { opacity: 1, y: 0, rotateY: 0, scale: 1 }
+          }
+          style={{ transformStyle: "preserve-3d" }}
+          className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 relative"
+        >
+          {isSuccessExit && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.45 }}
+              transition={{ duration: 0.5 }}
+              className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
+            />
+          )}
           <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#2563eb] to-[#ff8c00]" />
 
           <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100">
@@ -287,7 +315,7 @@ export default function RegisterLecturerPage() {
               )}
             </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
 
         <p className="text-center text-[11px] text-white/70 mt-4">
           Already registered?{" "}
@@ -295,7 +323,7 @@ export default function RegisterLecturerPage() {
             Sign In here
           </Link>
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 }
