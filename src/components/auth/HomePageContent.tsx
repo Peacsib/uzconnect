@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { loginSchema, LoginFormData } from "@/utils/validators";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-// Optimized static assets
+// Static assets
 const UZ_CREST = "/uz-crest.png";
 const BG_IMAGE = "/homepage-background.webp";
 
@@ -54,66 +54,35 @@ const features = [
   },
 ];
 
-// WhatsApp Status / Stories 3D Cube Rotation Variants
-const cubeVariants = {
-  enter: (direction: number) => ({
-    rotateY: direction > 0 ? 82 : -82,
-    transformOrigin: direction > 0 ? "right center" : "left center",
-    scale: 0.93,
-    opacity: 0.82,
-  }),
-  center: {
-    rotateY: 0,
-    transformOrigin: "center center",
-    scale: 1,
-    opacity: 1,
-    transition: {
-      duration: 0.65,
-      ease: [0.32, 0.72, 0, 1] as [number, number, number, number], // iOS / WhatsApp spring physics bezier
-    },
-  },
-  exit: (direction: number) => ({
-    rotateY: direction > 0 ? -82 : 82,
-    transformOrigin: direction > 0 ? "left center" : "right center",
-    scale: 0.93,
-    opacity: 0.82,
-    transition: {
-      duration: 0.65,
-      ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
-    },
-  }),
-};
-
-// 3D dynamic lighting shadow overlay that darkens the receding face
-const shadowVariants = {
-  enter: {
-    opacity: 0.45,
-    transition: { duration: 0.65, ease: "easeInOut" as const },
-  },
-  center: {
-    opacity: 0,
-    transition: { duration: 0.65, ease: "easeInOut" as const },
-  },
-  exit: {
-    opacity: 0.45,
-    transition: { duration: 0.65, ease: "easeInOut" as const },
-  },
-};
-
 export default function HomePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login, isLoading } = useAuth();
 
-  const isFromCube = searchParams.get("cube") === "1";
+  const isFromReg = searchParams.get("from") === "reg" || searchParams.get("cube") === "1";
   const registeredParam = searchParams.get("registered");
   const emailParam = searchParams.get("email");
   const initialEmail = emailParam || (registeredParam && registeredParam !== "true" ? registeredParam : "");
 
-  const [tab, setTab] = useState<"signin" | "register">("signin");
-  const [direction, setDirection] = useState<number>(isFromCube ? -1 : 1);
+  // If redirected from registration, start at register face (-90deg) and animate to signin (0deg)
+  const [tab, setTab] = useState<"signin" | "register">(isFromReg ? "register" : "signin");
   const [showPassword, setShowPassword] = useState(false);
   const toastFiredRef = useRef(false);
+
+  // Dynamic 3D Cube depth (half-width) measurement
+  const cubeRef = useRef<HTMLDivElement>(null);
+  const [cubeDepth, setCubeDepth] = useState(200);
+
+  useEffect(() => {
+    const updateDepth = () => {
+      if (cubeRef.current) {
+        setCubeDepth(Math.round(cubeRef.current.offsetWidth / 2));
+      }
+    };
+    updateDepth();
+    window.addEventListener("resize", updateDepth);
+    return () => window.removeEventListener("resize", updateDepth);
+  }, []);
 
   const {
     register,
@@ -132,26 +101,36 @@ export default function HomePage() {
   useEffect(() => {
     if (initialEmail) {
       setValue("email", initialEmail);
-      setTab("signin");
 
-      if (!toastFiredRef.current && (registeredParam || isFromCube)) {
+      if (!toastFiredRef.current && (registeredParam || isFromReg)) {
         toastFiredRef.current = true;
         toast.success("Account created successfully! Please enter your password to sign in.", {
           duration: 5000,
         });
       }
 
-      // Auto-focus password input after 3D cube rotation completes smoothly
-      const timer = setTimeout(() => {
+      // If came from registration, smoothly turn the cube to the signin face after short pause
+      if (isFromReg) {
+        const turnTimer = setTimeout(() => {
+          setTab("signin");
+        }, 150);
+        return () => clearTimeout(turnTimer);
+      }
+    }
+  }, [initialEmail, setValue, registeredParam, isFromReg]);
+
+  // Focus password input once on the signin face
+  useEffect(() => {
+    if (tab === "signin" && initialEmail) {
+      const focusTimer = setTimeout(() => {
         const pwInput = document.getElementById("login-password-input");
         if (pwInput) {
           pwInput.focus();
         }
-      }, 700);
-
-      return () => clearTimeout(timer);
+      }, 750);
+      return () => clearTimeout(focusTimer);
     }
-  }, [initialEmail, setValue, registeredParam, isFromCube]);
+  }, [tab, initialEmail]);
 
   // Force light mode on homepage
   useEffect(() => {
@@ -163,12 +142,6 @@ export default function HomePage() {
       }
     };
   }, []);
-
-  const handleTabChange = (newTab: "signin" | "register") => {
-    if (newTab === tab) return;
-    setDirection(newTab === "register" ? 1 : -1);
-    setTab(newTab);
-  };
 
   const onLogin = async (data: LoginFormData) => {
     const success = await login(data.email, data.password);
@@ -186,7 +159,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
-      {/* Mobile Hero Panel - Shows First on Mobile */}
+      {/* Mobile Hero Panel */}
       <div
         className="lg:hidden min-h-screen relative overflow-hidden flex flex-col"
         style={{
@@ -195,13 +168,10 @@ export default function HomePage() {
           backgroundPosition: "center",
         }}
       >
-        {/* Overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/85 via-[#002147]/75 to-[#003d66]/80" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
 
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-6 text-white flex-1">
-          {/* Top branding */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -215,7 +185,6 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          {/* Center tagline */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -265,7 +234,6 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          {/* Bottom features */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -291,7 +259,6 @@ export default function HomePage() {
             ))}
           </motion.div>
 
-          {/* Scroll indicator */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -329,9 +296,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/80 via-[#002147]/70 to-[#003d66]/75" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20" />
 
-        {/* Content */}
         <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
-          {/* Top branding */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -345,7 +310,6 @@ export default function HomePage() {
             </div>
           </motion.div>
 
-          {/* Center tagline */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -395,7 +359,6 @@ export default function HomePage() {
             </p>
           </motion.div>
 
-          {/* Bottom features */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -423,275 +386,290 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Right Auth Panel - 3D Perspective Stage Container */}
+      {/* Right Auth Panel - True 3D Cube Perspective Viewport */}
       <div className="min-h-screen lg:min-h-0 flex-1 lg:w-1/2 flex items-center justify-center p-6 lg:p-12 bg-gradient-to-br from-[#0a0e14] via-[#0f1419] to-[#1a1f2e] relative overflow-hidden">
-        {/* Decorative elements */}
+        {/* Decorative ambient glows */}
         <div className="hidden lg:block absolute top-10 right-10 w-32 h-32 bg-[#ff8c00]/5 rounded-full blur-3xl" />
         <div className="hidden lg:block absolute bottom-10 left-10 w-40 h-40 bg-[#003366]/10 rounded-full blur-3xl" />
 
-        {/* 3D Cube Perspective Viewport */}
+        {/* 3D Perspective Stage */}
         <div
-          className="w-full max-w-[420px] relative z-10 py-6"
+          ref={cubeRef}
+          className="w-full max-w-[420px] relative z-10"
           style={{
-            perspective: "1400px",
-            perspectiveOrigin: "center center",
+            perspective: "1200px",
+            perspectiveOrigin: "50% 50%",
           }}
         >
-          <AnimatePresence mode="wait" initial={isFromCube} custom={direction}>
-            {tab === "signin" ? (
+          {/* 3D Rotating Cube Container */}
+          <motion.div
+            animate={{
+              rotateY: tab === "signin" ? 0 : -90,
+              translateZ: -cubeDepth,
+            }}
+            transition={{
+              duration: 0.7,
+              ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+            }}
+            style={{
+              transformStyle: "preserve-3d",
+              position: "relative",
+              width: "100%",
+              height: "530px",
+            }}
+          >
+            {/* FACE 1: SIGN IN (Front Face at 0deg) */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                transform: `rotateY(0deg) translateZ(${cubeDepth}px)`,
+                transformStyle: "preserve-3d",
+                backfaceVisibility: "hidden",
+                pointerEvents: tab === "signin" ? "auto" : "none",
+              }}
+              className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 flex flex-col justify-between"
+            >
+              {/* Dynamic ambient lighting shadow overlay */}
               <motion.div
-                key="signin-cube-face"
-                custom={direction}
-                variants={cubeVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                style={{
-                  transformStyle: "preserve-3d",
-                  backfaceVisibility: "hidden",
-                }}
-                className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 relative"
-              >
-                {/* 3D Dynamic Ambient Shadow Overlay */}
-                <motion.div
-                  variants={shadowVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
-                />
+                animate={{ opacity: tab === "signin" ? 0 : 0.6 }}
+                transition={{ duration: 0.7, ease: "easeInOut" }}
+                className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
+              />
 
-                {/* Accent bar with gradient */}
-                <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726]" />
+              {/* Accent bar */}
+              <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726] shrink-0" />
 
-                {/* Card header */}
-                <div className="px-8 pt-6 pb-2 text-center border-b border-gray-100">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#003366] to-[#002147] mb-2 shadow-lg">
-                    <img src={UZ_CREST} alt="UZ Crest" className="w-9 h-9" />
-                  </div>
-                  <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">WRL Connect</h1>
-                  <p className="text-[11px] text-gray-500 font-medium">Work-Related Learning Platform</p>
+              {/* Header */}
+              <div className="px-8 pt-5 pb-2 text-center border-b border-gray-100 shrink-0">
+                <div className="inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br from-[#003366] to-[#002147] mb-2 shadow-lg">
+                  <img src={UZ_CREST} alt="UZ Crest" className="w-8 h-8" />
                 </div>
+                <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">WRL Connect</h1>
+                <p className="text-[11px] text-gray-500 font-medium">Work-Related Learning Platform</p>
+              </div>
 
-                {/* Tabs */}
-                <div className="px-6 lg:px-8 pt-4">
-                  <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("signin")}
-                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
-                    >
-                      SIGN IN
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("register")}
-                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
-                    >
-                      REGISTER
-                    </button>
-                  </div>
+              {/* 3D Tabs */}
+              <div className="px-6 lg:px-8 pt-3 shrink-0">
+                <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setTab("signin")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
+                  >
+                    SIGN IN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab("register")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
+                  >
+                    REGISTER
+                  </button>
                 </div>
+              </div>
 
-                {/* Form content */}
-                <div className="px-6 lg:px-8 py-5">
-                  <form onSubmit={handleSubmit(onLogin)} className="space-y-3.5">
-                    <div>
-                      <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1.5 block">
-                        Email
-                      </Label>
+              {/* Form Content */}
+              <div className="px-6 lg:px-8 py-4 flex-1 flex flex-col justify-center">
+                <form onSubmit={handleSubmit(onLogin)} className="space-y-3">
+                  <div>
+                    <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1 block">
+                      Email
+                    </Label>
+                    <Input
+                      {...register("email")}
+                      type="text"
+                      autoComplete="username"
+                      placeholder="Enter your email or registration number"
+                      className="h-10 text-sm border-gray-300 focus:border-[#ff8c00] focus:ring-[#ff8c00] rounded-lg"
+                    />
+                    {errors.email && (
+                      <p className="text-red-600 text-xs mt-1 font-medium">{errors.email.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1 block">
+                      Password
+                    </Label>
+                    <div className="relative">
                       <Input
-                        {...register("email")}
-                        type="text"
-                        autoComplete="username"
-                        placeholder="Enter your email or registration number"
-                        className="h-10 text-sm border-gray-300 focus:border-[#ff8c00] focus:ring-[#ff8c00] rounded-lg"
+                        id="login-password-input"
+                        {...register("password")}
+                        type={showPassword ? "text" : "password"}
+                        autoComplete="current-password"
+                        placeholder="Enter your password"
+                        className="h-10 pr-11 text-sm border-gray-300 focus:border-[#ff8c00] focus:ring-[#ff8c00] rounded-lg"
                       />
-                      {errors.email && (
-                        <p className="text-red-600 text-xs mt-1 font-medium">{errors.email.message}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1.5 block">
-                        Password
-                      </Label>
-                      <div className="relative">
-                        <Input
-                          id="login-password-input"
-                          {...register("password")}
-                          type={showPassword ? "text" : "password"}
-                          autoComplete="current-password"
-                          placeholder="Enter your password"
-                          className="h-10 pr-11 text-sm border-gray-300 focus:border-[#ff8c00] focus:ring-[#ff8c00] rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      {errors.password && (
-                        <p className="text-red-600 text-xs mt-1 font-medium">{errors.password.message}</p>
-                      )}
-                    </div>
-
-                    <div className="text-right">
-                      <Link
-                        href="/forgot-password"
-                        className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                       >
-                        Forgot password?
-                      </Link>
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
+                    {errors.password && (
+                      <p className="text-red-600 text-xs mt-1 font-medium">{errors.password.message}</p>
+                    )}
+                  </div>
 
-                    <Button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full h-11 bg-gradient-to-r from-[#003366] to-[#002147] text-white hover:from-[#002147] hover:to-[#001a33] font-bold text-sm tracking-wide rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  <div className="text-right">
+                    <Link
+                      href="/forgot-password"
+                      className="text-xs text-gray-500 hover:text-gray-700 transition-colors"
                     >
-                      {isLoading ? (
-                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      ) : (
-                        <>
-                          <LogIn className="w-4 h-4 mr-2" />
-                          SIGN IN
-                        </>
-                      )}
-                    </Button>
+                      Forgot password?
+                    </Link>
+                  </div>
 
-                    {/* Secure badge */}
-                    <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500 pt-1">
-                      <Lock className="w-3.5 h-3.5 text-emerald-600" />
-                      <span className="font-medium">Secure, encrypted connection</span>
-                    </div>
-                  </form>
-                </div>
-              </motion.div>
-            ) : (
+                  <Button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full h-10 bg-gradient-to-r from-[#003366] to-[#002147] text-white hover:from-[#002147] hover:to-[#001a33] font-bold text-sm tracking-wide rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    {isLoading ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <LogIn className="w-4 h-4 mr-2" />
+                        SIGN IN
+                      </>
+                    )}
+                  </Button>
+
+                  <div className="flex items-center justify-center gap-1.5 text-[11px] text-gray-500 pt-0.5">
+                    <Lock className="w-3.5 h-3.5 text-emerald-600" />
+                    <span className="font-medium">Secure, encrypted connection</span>
+                  </div>
+                </form>
+              </div>
+            </div>
+
+            {/* FACE 2: REGISTER (Right Face at +90deg) */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: "100%",
+                height: "100%",
+                transform: `rotateY(90deg) translateZ(${cubeDepth}px)`,
+                transformStyle: "preserve-3d",
+                backfaceVisibility: "hidden",
+                pointerEvents: tab === "register" ? "auto" : "none",
+              }}
+              className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 flex flex-col justify-between"
+            >
+              {/* Dynamic ambient lighting shadow overlay */}
               <motion.div
-                key="register-cube-face"
-                custom={direction}
-                variants={cubeVariants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                style={{
-                  transformStyle: "preserve-3d",
-                  backfaceVisibility: "hidden",
-                }}
-                className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 relative"
-              >
-                {/* 3D Dynamic Ambient Shadow Overlay */}
-                <motion.div
-                  variants={shadowVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
-                />
+                animate={{ opacity: tab === "register" ? 0 : 0.6 }}
+                transition={{ duration: 0.7, ease: "easeInOut" }}
+                className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
+              />
 
-                {/* Accent bar with gradient */}
-                <div className="h-1.5 bg-gradient-to-r from-[#ff8c00] via-[#ffa726] to-[#003366]" />
+              {/* Accent bar */}
+              <div className="h-1.5 bg-gradient-to-r from-[#ff8c00] via-[#ffa726] to-[#003366] shrink-0" />
 
-                {/* Card header */}
-                <div className="px-8 pt-6 pb-2 text-center border-b border-gray-100">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff8c00] to-[#e65100] mb-2 shadow-lg">
-                    <Sparkles className="w-8 h-8 text-white" />
-                  </div>
-                  <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">Create Account</h1>
-                  <p className="text-[11px] text-gray-500 font-medium">Select your portal role to register</p>
+              {/* Header */}
+              <div className="px-8 pt-5 pb-2 text-center border-b border-gray-100 shrink-0">
+                <div className="inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br from-[#ff8c00] to-[#e65100] mb-2 shadow-lg">
+                  <Sparkles className="w-7 h-7 text-white" />
                 </div>
+                <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">Create Account</h1>
+                <p className="text-[11px] text-gray-500 font-medium">Select your portal role to register</p>
+              </div>
 
-                {/* Tabs */}
-                <div className="px-6 lg:px-8 pt-4">
-                  <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("signin")}
-                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
-                    >
-                      SIGN IN
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("register")}
-                      className="flex-1 py-2 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
-                    >
-                      REGISTER
-                    </button>
-                  </div>
+              {/* 3D Tabs */}
+              <div className="px-6 lg:px-8 pt-3 shrink-0">
+                <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
+                  <button
+                    type="button"
+                    onClick={() => setTab("signin")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
+                  >
+                    SIGN IN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTab("register")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
+                  >
+                    REGISTER
+                  </button>
                 </div>
+              </div>
 
-                {/* Registration options */}
-                <div className="px-6 lg:px-8 py-5 space-y-3">
-                  <Link href="/register/student" className="block">
-                    <Button
-                      variant="outline"
-                      className="w-full h-auto py-3 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                        <GraduationCap className="w-5 h-5 text-white" />
+              {/* Options */}
+              <div className="px-6 lg:px-8 py-3.5 flex-1 flex flex-col justify-center space-y-2.5">
+                <Link href="/register/student" className="block">
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                      <GraduationCap className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+                        Register as Student
+                        <span className="text-[9px] bg-blue-100 text-[#003366] px-1.5 py-0.5 rounded font-semibold">
+                          Self-Service
+                        </span>
                       </div>
-                      <div className="text-left">
-                        <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
-                          Register as Student
-                          <span className="text-[10px] bg-blue-100 text-[#003366] px-1.5 py-0.5 rounded font-semibold">
-                            Self-Service
-                          </span>
-                        </div>
-                        <div className="text-[11px] text-gray-500">For UZ students preparing for or on attachment</div>
-                      </div>
-                    </Button>
-                  </Link>
+                      <div className="text-[10px] text-gray-500">For UZ students preparing for attachment</div>
+                    </div>
+                  </Button>
+                </Link>
 
-                  <Link href="/register/supervisor" className="block">
-                    <Button
-                      variant="outline"
-                      className="w-full h-auto py-3 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                        <Building2 className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-bold text-gray-900 text-sm">Register as Supervisor</div>
-                        <div className="text-[11px] text-gray-500">Industry company mentors supervising interns</div>
-                      </div>
-                    </Button>
-                  </Link>
+                <Link href="/register/supervisor" className="block">
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                      <Building2 className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-gray-900 text-xs">Register as Supervisor</div>
+                      <div className="text-[10px] text-gray-500">Industry company mentors supervising interns</div>
+                    </div>
+                  </Button>
+                </Link>
 
-                  <Link href="/register/lecturer" className="block">
-                    <Button
-                      variant="outline"
-                      className="w-full h-auto py-3 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group"
-                    >
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                        <BookOpen className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="text-left">
-                        <div className="font-bold text-gray-900 text-sm">Register as Lecturer</div>
-                        <div className="text-[11px] text-gray-500">University academic staff & placement assessors</div>
-                      </div>
-                    </Button>
-                  </Link>
+                <Link href="/register/lecturer" className="block">
+                  <Button
+                    variant="outline"
+                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                      <BookOpen className="w-5 h-5 text-white" />
+                    </div>
+                    <div className="text-left">
+                      <div className="font-bold text-gray-900 text-xs">Register as Lecturer</div>
+                      <div className="text-[10px] text-gray-500">University academic staff & placement assessors</div>
+                    </div>
+                  </Button>
+                </Link>
 
-                  <div className="pt-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("signin")}
-                      className="text-xs text-[#003366] font-semibold hover:underline inline-flex items-center gap-1"
-                    >
-                      Already have an account? Sign in here
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                <div className="pt-1 text-center">
+                  <button
+                    type="button"
+                    onClick={() => setTab("signin")}
+                    className="text-xs text-[#003366] font-semibold hover:underline inline-flex items-center gap-1"
+                  >
+                    Already have an account? Sign in here
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+              </div>
+            </div>
+          </motion.div>
 
+          {/* Footer copyright */}
           <p className="text-center text-[11px] text-white/60 lg:text-gray-500 mt-5">
             © {new Date().getFullYear()} University of Zimbabwe · WRL Connect
           </p>
