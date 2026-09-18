@@ -158,9 +158,9 @@ export default function RegisterStudentPage() {
         </div>
 
         {/* Card */}
-        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20">
+        <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 relative">
           {/* Top Gold/Navy Accent Bar */}
-          <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726]" />
+          <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726] rounded-t-2xl" />
 
           {/* Header */}
           <div className="px-6 pt-6 pb-4 text-center border-b border-gray-100">
