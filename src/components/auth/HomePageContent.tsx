@@ -429,42 +429,55 @@ export default function HomePage() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="space-y-3"
+                    className="space-y-2.5"
                   >
-                    <Link href="/register/supervisor">
+                    <Link href="/register/student" className="block">
                       <Button
                         variant="outline"
-                        className="w-full h-auto py-4 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                        className="w-full h-auto py-3 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                          <GraduationCap className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="text-left">
+                          <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
+                            Register as Student
+                            <span className="text-[10px] bg-blue-100 text-[#003366] px-1.5 py-0.5 rounded font-semibold">Self-Service</span>
+                          </div>
+                          <div className="text-[11px] text-gray-500">For UZ students preparing for or on attachment</div>
+                        </div>
+                      </Button>
+                    </Link>
+
+                    <Link href="/register/supervisor" className="block">
+                      <Button
+                        variant="outline"
+                        className="w-full h-auto py-3 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
                           <Building2 className="w-5 h-5 text-white" />
                         </div>
                         <div className="text-left">
                           <div className="font-bold text-gray-900 text-sm">Register as Supervisor</div>
-                          <div className="text-xs text-gray-600">Industry placement supervisor</div>
+                          <div className="text-[11px] text-gray-500">Industry company mentors supervising interns</div>
                         </div>
                       </Button>
                     </Link>
-                    <Link href="/register/lecturer">
+
+                    <Link href="/register/lecturer" className="block">
                       <Button
                         variant="outline"
-                        className="w-full h-auto py-4 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                        className="w-full h-auto py-3 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group"
                       >
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                          <GraduationCap className="w-5 h-5 text-white" />
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                          <BookOpen className="w-5 h-5 text-white" />
                         </div>
                         <div className="text-left">
                           <div className="font-bold text-gray-900 text-sm">Register as Lecturer</div>
-                          <div className="text-xs text-gray-600">University academic staff</div>
+                          <div className="text-[11px] text-gray-500">University academic staff & placement assessors</div>
                         </div>
                       </Button>
                     </Link>
-                    <div className="mt-4 p-3.5 rounded-xl bg-blue-50 border-2 border-blue-200">
-                      <p className="text-xs text-gray-700 leading-relaxed">
-                        <UserPlus className="w-3.5 h-3.5 inline mr-1.5 text-[#003366]" />
-                        <strong className="text-gray-900 font-bold">Students:</strong> Your account is created by your department. Use the credentials sent to your university email.
-                      </p>
-                    </div>
                   </motion.div>
                 )}
               </AnimatePresence>
