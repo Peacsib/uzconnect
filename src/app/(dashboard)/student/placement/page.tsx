@@ -16,8 +16,7 @@ import {
   ArrowRight,
   ShieldCheck,
   CheckCircle2,
-  AlertCircle,
-  Sparkles,
+  Info,
   ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -37,8 +36,8 @@ export default function MyPlacement() {
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
-        <p className="text-xs text-muted-foreground">Loading placement details...</p>
+        <Loader2 className="w-7 h-7 animate-spin text-[#003366] dark:text-[#ffa726]" />
+        <p className="text-xs text-muted-foreground font-medium">Loading placement records...</p>
       </div>
     );
   }
@@ -51,14 +50,14 @@ export default function MyPlacement() {
   if (placement) {
     return (
       <div className="space-y-6 max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">My Industrial Placement</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Verified attachment details and mentorship contacts
+              Verified host employer details and industry mentorship contacts
             </p>
           </div>
-          <Badge variant="outline" className={`${getStatusColor(placement.status)} text-xs px-3 py-1 font-bold`}>
+          <Badge variant="outline" className={`${getStatusColor(placement.status)} text-xs px-3 py-1 font-semibold`}>
             {placement.status || "ACTIVE"}
           </Badge>
         </div>
@@ -66,25 +65,25 @@ export default function MyPlacement() {
         <div className="grid md:grid-cols-2 gap-6">
           {/* Company Card */}
           <Card className="border-border/60 shadow-xs">
-            <CardHeader className="flex-row items-center gap-3 border-b border-border/40 pb-4">
-              <div className="w-10 h-10 rounded-xl bg-[#003366]/10 flex items-center justify-center text-[#003366] dark:text-blue-400">
-                <Building2 className="w-5 h-5" />
+            <CardHeader className="flex-row items-center gap-3 border-b border-border/50 pb-4">
+              <div className="w-9 h-9 rounded-lg bg-[#003366]/10 flex items-center justify-center text-[#003366] dark:text-blue-400">
+                <Building2 className="w-4 h-4" />
               </div>
               <div>
-                <CardTitle className="text-base font-bold">Host Employer</CardTitle>
-                <CardDescription className="text-xs">Company organisation details</CardDescription>
+                <CardTitle className="text-sm font-bold">Host Employer</CardTitle>
+                <CardDescription className="text-xs">Accredited training organization</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 pt-5 text-sm">
-              <p className="font-bold text-lg text-foreground">{placement.company_name || placement.company_id || "Company"}</p>
-              <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <Calendar className="w-4 h-4 text-muted-foreground shrink-0" />
+            <CardContent className="space-y-3 pt-5 text-xs">
+              <p className="font-bold text-base text-foreground">{placement.company_name || placement.company_id || "Company"}</p>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <span>
                   {formatDate(placement.start_date || "")} – {formatDate(placement.end_date || "")}
                 </span>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <MapPin className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <span>Harare, Zimbabwe</span>
               </div>
             </CardContent>
@@ -92,23 +91,23 @@ export default function MyPlacement() {
 
           {/* Supervisor Card */}
           <Card className="border-border/60 shadow-xs">
-            <CardHeader className="flex-row items-center gap-3 border-b border-border/40 pb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-[#ff8c00]">
-                <User className="w-5 h-5" />
+            <CardHeader className="flex-row items-center gap-3 border-b border-border/50 pb-4">
+              <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-foreground">
+                <User className="w-4 h-4" />
               </div>
               <div>
-                <CardTitle className="text-base font-bold">Industry Mentor / Supervisor</CardTitle>
-                <CardDescription className="text-xs">Direct workplace mentor</CardDescription>
+                <CardTitle className="text-sm font-bold">Industry Mentor / Supervisor</CardTitle>
+                <CardDescription className="text-xs">Designated workplace evaluator</CardDescription>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3 pt-5 text-sm">
-              <p className="font-bold text-lg text-foreground">{placement.supervisor_name || "Assigned Industry Supervisor"}</p>
-              <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <Mail className="w-4 h-4 text-muted-foreground shrink-0" />
+            <CardContent className="space-y-3 pt-5 text-xs">
+              <p className="font-bold text-base text-foreground">{placement.supervisor_name || "Assigned Industry Supervisor"}</p>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <span>{placement.supervisor_email || "supervisor@company.co.zw"}</span>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground text-xs">
-                <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <span>+263 77 000 0000</span>
               </div>
             </CardContent>
@@ -122,42 +121,43 @@ export default function MyPlacement() {
   if (submission) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
-        <div>
+        <div className="border-b border-border/60 pb-4">
           <h1 className="text-2xl font-bold tracking-tight text-foreground">My Industrial Placement</h1>
-          <p className="text-xs text-muted-foreground mt-0.5">Attachment registration status</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Attachment registration and verification review</p>
         </div>
 
-        <Card className="border-blue-200/80 dark:border-blue-900/60 bg-gradient-to-br from-blue-50/50 to-white dark:from-blue-950/20 dark:to-card shadow-sm">
+        <Card className="border-border/60 shadow-xs">
           <CardContent className="p-6 md:p-8 space-y-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300 text-xs font-bold">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 border border-blue-500/20 text-xs font-semibold">
               <ShieldCheck className="w-3.5 h-3.5" />
-              Verification In Progress
+              Verification in Progress
             </div>
-            <h2 className="text-xl font-bold text-foreground">
-              Placement Submitted for Coordinator Approval
+            <h2 className="text-lg font-bold text-foreground">
+              Placement Details Under Coordinator Review
             </h2>
-            <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
-              You have submitted placement details for <strong>{submission.company_name || submission.companyName}</strong>. Department Coordinator <strong>Jameson Sibanda</strong> will review and verify your supervisor details.
+            <p className="text-xs text-muted-foreground max-w-xl leading-relaxed">
+              Your attachment details for <strong>{submission.company_name || submission.companyName}</strong> have been submitted. Department Coordinator <strong>Jameson Sibanda</strong> will verify employer credentials and supervisor appointment.
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-3 pt-3 border-t border-blue-100 dark:border-blue-900/40 text-xs">
+            <div className="grid sm:grid-cols-2 gap-3 pt-4 border-t border-border/50 text-xs">
               <div>
-                <span className="text-muted-foreground">Employer:</span>
-                <p className="font-semibold text-foreground">{submission.company_name || submission.companyName}</p>
+                <span className="text-muted-foreground">Host Employer:</span>
+                <p className="font-semibold text-foreground mt-0.5">{submission.company_name || submission.companyName}</p>
               </div>
               <div>
-                <span className="text-muted-foreground">Supervisor:</span>
-                <p className="font-semibold text-foreground">{submission.supervisor_name || submission.supervisorName}</p>
+                <span className="text-muted-foreground">Industry Supervisor:</span>
+                <p className="font-semibold text-foreground mt-0.5">{submission.supervisor_name || submission.supervisorName}</p>
               </div>
             </div>
 
             <div className="pt-2 flex items-center gap-3">
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => router.push("/student/messages")}
-                className="text-xs h-9 rounded-xl"
+                className="text-xs h-8 rounded-lg cursor-pointer"
               >
-                Message Coordinator
+                Contact Coordinator
               </Button>
             </div>
           </CardContent>
@@ -166,52 +166,51 @@ export default function MyPlacement() {
     );
   }
 
-  // 3. If no placement or submission exists (Empty State with Best Practice Onboarding)
+  // 3. If no placement or submission exists (Clean Institutional Onboarding)
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      <div>
+      <div className="border-b border-border/60 pb-4">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">My Industrial Placement</h1>
-        <p className="text-xs text-muted-foreground mt-0.5">Attachment details and verification</p>
+        <p className="text-xs text-muted-foreground mt-0.5">Attachment records and employer verification</p>
       </div>
 
-      <Card className="border-border/70 shadow-sm overflow-hidden">
-        <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726]" />
+      <Card className="border-border/60 shadow-xs">
         <CardContent className="p-8 text-center max-w-lg mx-auto space-y-4">
-          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[#ff8c00] flex items-center justify-center mx-auto shadow-xs">
-            <Briefcase className="w-8 h-8" />
+          <div className="w-12 h-12 rounded-xl bg-muted/60 border border-border/70 text-muted-foreground flex items-center justify-center mx-auto">
+            <Briefcase className="w-6 h-6" />
           </div>
 
           <div>
-            <h2 className="text-xl font-bold text-foreground tracking-tight">No Active Placement Found</h2>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-              You haven't submitted your industrial attachment placement yet. To enable your 30-week digital logbook and receive academic supervision visits, please register your company placement offer.
+            <h2 className="text-lg font-bold text-foreground">No Placement Registered Yet</h2>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              To begin your 30-week Work Related Learning course and unlock your digital logbook, you must submit your approved host employer placement offer.
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-muted/40 border border-border/50 text-left text-xs space-y-2">
-            <p className="font-bold text-foreground flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#ff8c00]" />
-              What you need to submit:
+          <div className="p-4 rounded-lg bg-muted/30 border border-border/50 text-left text-xs space-y-2">
+            <p className="font-semibold text-foreground flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 text-primary" />
+              Information required for registration:
             </p>
             <ul className="space-y-1 text-muted-foreground text-[11px] list-disc list-inside">
-              <li>Company name, physical address & city</li>
-              <li>Industry supervisor full name, email & phone number</li>
-              <li>Expected attachment start date (minimum 30 continuous weeks)</li>
+              <li>Host company name, physical address and operating city</li>
+              <li>Designated workplace supervisor full name, official email and telephone</li>
+              <li>Confirmed attachment start date (minimum 30 continuous weeks)</li>
             </ul>
           </div>
 
           <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
               onClick={() => router.push("/student/submit-placement")}
-              className="w-full sm:w-auto h-10 px-6 bg-gradient-to-r from-[#ff8c00] to-[#ffa726] hover:from-[#e67e00] hover:to-[#ff8c00] text-white font-bold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto h-9 px-5 bg-[#003366] hover:bg-[#002244] text-white font-semibold text-xs rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               Submit Placement Details
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             </Button>
             <Button
               variant="outline"
               onClick={() => router.push("/student")}
-              className="w-full sm:w-auto h-10 px-4 text-xs rounded-xl border-border/70 cursor-pointer"
+              className="w-full sm:w-auto h-9 px-4 text-xs rounded-lg border-border cursor-pointer"
             >
               Back to Overview
             </Button>

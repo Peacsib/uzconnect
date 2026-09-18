@@ -1,6 +1,6 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,44 +11,42 @@ import {
   Clock,
   Loader2,
   BookOpen,
-  AlertTriangle,
   ArrowRight,
   Briefcase,
   CheckCircle2,
   Building2,
   GraduationCap,
-  Sparkles,
   Send,
   MessageSquare,
   Award,
   ChevronRight,
-  HelpCircle,
   Mail,
   ShieldCheck,
-  Compass,
+  AlertCircle,
+  FileDown,
+  Info,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { usePlacements, useSubmissions, useAssessments, useLogbookEntries, usePlacementSubmissions } from "@/hooks/useApi";
 import { useStudentProfile } from "@/hooks/useStudentProfile";
-import { differenceInDays, parseISO } from "date-fns";
-
-const container = { hidden: {}, show: { transition: { staggerChildren: 0.08 } } };
-const item = { hidden: { opacity: 0, y: 15 }, show: { opacity: 1, y: 0, transition: { duration: 0.3 } } };
 
 export default function StudentOverview() {
   const { user } = useAuth();
   const router = useRouter();
 
-  // Fetch live student profile from database
+  // Live profile from API / DB
   const { profile, isLoading: profileLoading } = useStudentProfile();
 
-  // Fetch mock/api operational data
+  // Operational state
   const { data: placements, isLoading: placementsLoading } = usePlacements();
   const { data: submissions, isLoading: submissionsLoading } = useSubmissions();
   const { data: assessments, isLoading: assessmentsLoading } = useAssessments();
   const { data: logbookEntries, isLoading: logbookLoading } = useLogbookEntries();
   const { data: placementSubs } = usePlacementSubmissions();
+
+  const [deliverablesTab, setDeliverablesTab] = useState<"all" | "upcoming" | "completed">("all");
 
   const isLoading = profileLoading || placementsLoading || submissionsLoading || assessmentsLoading || logbookLoading;
 
@@ -57,555 +55,521 @@ export default function StudentOverview() {
   const mySubs = submissions?.filter((s) => s.student_id === studentId || s.studentId === studentId) || [];
   const myPlacement = placements?.find((p) => p.student_id === studentId || p.studentId === studentId) || profile?.activePlacement;
   const myAssessments = assessments?.filter((a) => a.student_id === studentId || a.studentId === studentId) || [];
+  const avgScore = myAssessments.length > 0 ? Math.round(myAssessments.reduce((sum: number, a: any) => sum + (a.overall_score || a.overallScore || 0), 0) / myAssessments.length) : 0;
   const myLogbook = logbookEntries?.filter((e) => e.student_id === studentId || e.studentId === studentId) || [];
   const myPlacementSubmission = placementSubs?.find((ps) => ps.student_id === studentId || ps.student_id === user?.id) || profile?.latestSubmission;
 
-  // Derive registration and academic info
+  // Academic identity
   const regNumber = profile?.regNumber || user?.regNumber || (user?.email?.includes("@") ? user.email.split("@")[0].toUpperCase() : "R2421428");
+  const studentName = profile?.name || user?.name || "Peace Sibanda";
   const programmeName = profile?.programme?.name || "BSc Honours Business Management Systems Design and Applications";
   const programmeCode = profile?.programme?.code || "HBMSDA";
   const facultyName = profile?.programme?.faculty || "Faculty of Business Management Sciences and Economics";
-  const departmentName = profile?.programme?.department || "Business Studies";
-  const studentName = profile?.name || user?.name || "Peace Sibanda";
-  const firstName = studentName.split(" ")[0];
+  const departmentName = profile?.programme?.department || "Department of Business Studies";
 
-  // Calculate statistics
-  const pendingSubs = mySubs.filter((s) => s.status === "pending").length;
-  const avgScore =
-    myAssessments.length > 0
-      ? Math.round(myAssessments.reduce((sum, a) => sum + (a.overall_score || 0), 0) / myAssessments.length)
-      : 0;
+  // Attachment Lifecycle Stage (1 to 4)
+  let currentStage = 1;
+  let stageLabel = "Placement Registration Required";
+  let statusBadgeVariant = "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25";
 
-  // Next deadline
-  const nextDeadline = mySubs
-    .filter((s) => s.status === "pending")
-    .sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""))[0];
-
-  // Logbook upcoming deadlines
-  const upcomingLogbookDeadlines = myLogbook
-    .filter(
-      (e) =>
-        e.due_date &&
-        new Date(e.due_date) >= new Date() &&
-        new Date(e.due_date) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) &&
-        (e.status === "draft" || e.status === "rejected")
-    )
-    .sort((a, b) => new Date(a.due_date!).getTime() - new Date(b.due_date!).getTime());
-
-  // Determine WRL Lifecycle Stage (1 to 4)
-  let wrlStage = 1;
-  let stageLabel = "Placement Registration";
   if (myPlacement && (myPlacement.status === "ACTIVE" || myPlacement.status === "active")) {
-    wrlStage = 3;
+    currentStage = 3;
     stageLabel = "Active Attachment";
+    statusBadgeVariant = "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/25";
   } else if (myPlacementSubmission) {
-    wrlStage = 2;
-    stageLabel = "Pending Approval";
+    currentStage = 2;
+    stageLabel = "Pending Coordinator Review";
+    statusBadgeVariant = "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/25";
   }
 
-  const wrlSteps = [
-    { number: 1, title: "Placement Offer", desc: "Submit company details", isDone: wrlStage > 1, isCurrent: wrlStage === 1 },
-    { number: 2, title: "Faculty Approval", desc: "Coordinator review", isDone: wrlStage > 2, isCurrent: wrlStage === 2 },
-    { number: 3, title: "Industrial Attachment", desc: "30-Week Logbooks", isDone: wrlStage > 3, isCurrent: wrlStage === 3 },
-    { number: 4, title: "Assessment & Grading", desc: "Reports & Evaluation", isDone: false, isCurrent: wrlStage === 4 },
+  const lifecycleStages = [
+    { id: 1, label: "Placement Offer", desc: "Company registration", status: currentStage > 1 ? "completed" : currentStage === 1 ? "current" : "upcoming" },
+    { id: 2, label: "Faculty Verification", desc: "Coordinator approval", status: currentStage > 2 ? "completed" : currentStage === 2 ? "current" : "upcoming" },
+    { id: 3, label: "Industrial Attachment", desc: "30-week active training", status: currentStage > 3 ? "completed" : currentStage === 3 ? "current" : "upcoming" },
+    { id: 4, label: "Academic Assessment", desc: "Faculty visits & grading", status: currentStage === 4 ? "current" : "upcoming" },
   ];
+
+  // Standard curriculum deliverables
+  const standardDeliverables = [
+    {
+      id: "del_1",
+      title: "Employer Placement Confirmation Letter",
+      type: "Administrative Document",
+      dueDate: "30 September 2026",
+      status: myPlacementSubmission ? "Submitted" : "Pending",
+      statusColor: myPlacementSubmission ? "bg-blue-500/10 text-blue-600 border-blue-500/20" : "bg-amber-500/10 text-amber-600 border-amber-500/20",
+      action: () => router.push("/student/submit-placement"),
+      actionLabel: myPlacementSubmission ? "View Details" : "Submit",
+    },
+    {
+      id: "del_2",
+      title: "First Month Induction & Workplace Progress Report",
+      type: "Academic Report",
+      dueDate: "31 October 2026",
+      status: "Upcoming",
+      statusColor: "bg-muted text-muted-foreground border-border",
+      action: () => router.push("/student/submissions"),
+      actionLabel: "View Requirement",
+    },
+    {
+      id: "del_3",
+      title: "Mid-Term Industrial Assessment & Visiting Lecturer Evaluation",
+      type: "Faculty Assessment",
+      dueDate: "15 January 2027",
+      status: "Upcoming",
+      statusColor: "bg-muted text-muted-foreground border-border",
+      action: () => router.push("/student/feedback"),
+      actionLabel: "Rubric",
+    },
+    {
+      id: "del_4",
+      title: "Final 30-Week Logbook Dossier & Internship Dissertation",
+      type: "Final Dissertation",
+      dueDate: "30 April 2027",
+      status: "Upcoming",
+      statusColor: "bg-muted text-muted-foreground border-border",
+      action: () => router.push("/student/submissions"),
+      actionLabel: "Guidelines",
+    },
+  ];
+
+  const filteredDeliverables = standardDeliverables.filter((d) => {
+    if (deliverablesTab === "upcoming") return d.status === "Upcoming" || d.status === "Pending";
+    if (deliverablesTab === "completed") return d.status === "Submitted" || d.status === "Completed";
+    return true;
+  });
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-3">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
-        <p className="text-xs text-muted-foreground font-medium animate-pulse">
-          Loading student academic portal...
-        </p>
+        <Loader2 className="w-7 h-7 animate-spin text-[#003366] dark:text-[#ffa726]" />
+        <p className="text-xs text-muted-foreground font-medium">Loading academic records...</p>
       </div>
     );
   }
 
   return (
-    <motion.div variants={container} initial="hidden" animate="show" className="space-y-6 max-w-7xl mx-auto">
-      {/* 1. Academic Identity & Header Ribbon */}
-      <motion.div variants={item} className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+    <div className="space-y-6 max-w-7xl mx-auto">
+      {/* 1. Institutional Context & Header */}
+      <div className="border-b border-border/60 pb-5 flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <div className="flex flex-wrap items-center gap-2 mb-1.5">
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#003366] text-white tracking-wide shadow-xs flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              STUDENT PORTAL
-            </span>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
-              {regNumber}
-            </span>
-            <span className="text-xs text-muted-foreground font-medium hidden sm:inline">
-              • 2026/2027 Academic Year
-            </span>
+          <div className="flex items-center gap-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+            <span>Work Related Learning</span>
+            <span>/</span>
+            <span className="text-foreground">Student Portal</span>
+            <span>/</span>
+            <span className="font-mono text-[#003366] dark:text-[#ffa726] font-bold">{regNumber}</span>
           </div>
 
-          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            Welcome back, {firstName} <span className="inline-block">👋</span>
+          <h1 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
+            {studentName}
           </h1>
 
-          <div className="text-xs lg:text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span className="font-semibold text-foreground/90">{programmeName}</span>
-            <span className="font-mono text-xs px-1.5 py-0.2 rounded bg-muted font-bold text-[#003366] dark:text-[#ffa726]">
-              [{programmeCode}]
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{programmeName}</span>
+            <span className="font-mono px-1.5 py-0.5 rounded bg-muted text-foreground font-semibold text-[11px]">
+              {programmeCode}
             </span>
-            <span className="text-muted-foreground/60 hidden sm:inline">•</span>
-            <span className="hidden sm:inline">{departmentName}</span>
+            <span className="text-border">•</span>
+            <span>{departmentName}</span>
+            <span className="text-border">•</span>
+            <span>Academic Session 2026/2027</span>
           </div>
         </div>
 
-        {/* Header Action Buttons */}
+        {/* Primary Action Button */}
         <div className="flex items-center gap-2.5 shrink-0">
           <Button
             onClick={() => router.push("/student/submit-placement")}
-            className="h-10 px-4 bg-gradient-to-r from-[#ff8c00] to-[#ffa726] hover:from-[#e67e00] hover:to-[#ff8c00] text-white font-semibold text-xs rounded-xl shadow-md hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer"
+            className="h-9 px-4 bg-[#003366] hover:bg-[#002244] text-white text-xs font-semibold rounded-lg shadow-xs transition-colors cursor-pointer"
           >
-            <Send className="w-3.5 h-3.5" />
-            Submit Placement
+            <Send className="w-3.5 h-3.5 mr-1.5" />
+            Submit Placement Offer
           </Button>
           <Button
             variant="outline"
             onClick={() => router.push("/student/logbook")}
-            className="h-10 px-3.5 text-xs rounded-xl border-border/80 hover:bg-accent/10 font-medium cursor-pointer"
+            className="h-9 px-3.5 text-xs rounded-lg border-border font-medium cursor-pointer"
           >
             <BookOpen className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
             Digital Logbook
           </Button>
         </div>
-      </motion.div>
+      </div>
 
-      {/* 2. WRL Attachment Lifecycle Stepper */}
-      <motion.div variants={item}>
-        <Card className="border-border/60 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
-          <CardHeader className="py-3 px-5 border-b border-border/40 bg-muted/20">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Compass className="w-3.5 h-3.5 text-[#ff8c00]" />
-                WRL Attachment Progress Roadmap
-              </span>
-              <Badge variant="outline" className="text-[11px] font-semibold border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5">
-                Stage {wrlStage} of 4: {stageLabel}
-              </Badge>
+      {/* 2. Integrated Attachment Lifecycle & Action Module */}
+      <Card className="border-border/70 shadow-xs overflow-hidden">
+        <div className="p-5 lg:p-6 space-y-5">
+          {/* Header Row: Current Status */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border/50">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Attachment Progress Status
+              </p>
+              <p className="text-base font-bold text-foreground mt-0.5">
+                Stage {currentStage} of 4: {stageLabel}
+              </p>
             </div>
-          </CardHeader>
-          <CardContent className="p-4 lg:p-5">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-              {wrlSteps.map((step) => {
-                return (
-                  <div
-                    key={step.number}
-                    className={`p-3.5 rounded-xl border transition-all ${
-                      step.isCurrent
-                        ? "bg-gradient-to-br from-[#003366]/10 to-amber-500/5 border-[#003366] dark:border-[#ff8c00] shadow-xs"
-                        : step.isDone
-                        ? "bg-emerald-500/5 border-emerald-500/30"
-                        : "bg-muted/10 border-border/40 opacity-70"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <span
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold font-mono ${
-                          step.isCurrent
-                            ? "bg-[#003366] text-white dark:bg-[#ff8c00] dark:text-gray-900"
-                            : step.isDone
-                            ? "bg-emerald-600 text-white"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                      >
-                        {step.isDone ? <CheckCircle2 className="w-4 h-4" /> : step.number}
-                      </span>
-                      {step.isCurrent && (
-                        <span className="text-[10px] font-bold text-[#003366] dark:text-[#ff8c00] uppercase tracking-wider">
-                          Current
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-xs font-bold text-foreground">{step.title}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">{step.desc}</p>
+            <div className="flex items-center gap-2">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold border flex items-center gap-1.5 ${statusBadgeVariant}`}>
+                <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+                {currentStage === 1 ? "Action Required" : currentStage === 2 ? "In Review" : "Active"}
+              </span>
+            </div>
+          </div>
+
+          {/* Clean Stepper Pipeline */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {lifecycleStages.map((stage) => {
+              const isCurrent = stage.status === "current";
+              const isDone = stage.status === "completed";
+
+              return (
+                <div
+                  key={stage.id}
+                  className={`p-3.5 rounded-lg border transition-all ${
+                    isCurrent
+                      ? "bg-primary/5 border-primary/40 shadow-2xs"
+                      : isDone
+                      ? "bg-muted/30 border-border/60"
+                      : "bg-card border-border/40 opacity-60"
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-mono font-bold text-muted-foreground">
+                      0{stage.id}
+                    </span>
+                    {isDone ? (
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                    ) : isCurrent ? (
+                      <span className="w-2 h-2 rounded-full bg-primary" />
+                    ) : null}
                   </div>
-                );
-              })}
+                  <p className={`text-xs font-semibold ${isCurrent ? "text-primary font-bold" : "text-foreground"}`}>
+                    {stage.label}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">{stage.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Contextual Action Notification Banner */}
+          {!myPlacement && (
+            <div className="p-4 rounded-lg bg-muted/40 border border-border/60 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <Info className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div className="text-xs space-y-0.5">
+                  <p className="font-semibold text-foreground">
+                    {myPlacementSubmission
+                      ? "Placement details submitted for verification"
+                      : "Registration of host employer required"}
+                  </p>
+                  <p className="text-muted-foreground leading-relaxed">
+                    {myPlacementSubmission
+                      ? `Your placement with ${myPlacementSubmission.company_name || myPlacementSubmission.companyName} is under review by Coordinator Jameson Sibanda.`
+                      : "Submit your official placement offer and assigned industry supervisor to activate your 30-week digital logbook."}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={() => router.push(myPlacementSubmission ? "/student/placement" : "/student/submit-placement")}
+                className="h-8 px-3.5 text-xs bg-[#003366] hover:bg-[#002244] text-white shrink-0 cursor-pointer"
+              >
+                {myPlacementSubmission ? "Review Submission" : "Submit Placement Details"}
+                <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </Card>
+
+      {/* 3. Refined KPI Metrics Bar */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Metric 1 */}
+        <Card className="border-border/60 shadow-xs">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Attachment Status
+            </p>
+            <div className="flex items-baseline justify-between">
+              <span className="text-lg font-bold text-foreground tracking-tight">
+                {myPlacement ? "Active Attachment" : myPlacementSubmission ? "In Verification" : "Not Registered"}
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <span className={`w-1.5 h-1.5 rounded-full ${myPlacement ? "bg-emerald-500" : myPlacementSubmission ? "bg-blue-500" : "bg-amber-500"}`} />
+              {myPlacement ? (myPlacement.company_name || "Host Company") : myPlacementSubmission ? "Coordinator review" : "Placement required"}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Metric 2 */}
+        <Card className="border-border/60 shadow-xs">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Logbook Entries
+            </p>
+            <div className="flex items-baseline justify-between">
+              <span className="text-lg font-bold text-foreground tracking-tight">
+                {myLogbook.length} <span className="text-xs font-normal text-muted-foreground">/ 30 Weeks</span>
+              </span>
+              <span className="text-[11px] font-mono text-muted-foreground">
+                {Math.round((myLogbook.length / 30) * 100)}%
+              </span>
+            </div>
+            <div className="w-full bg-muted rounded-full h-1">
+              <div
+                className="bg-[#003366] dark:bg-[#ffa726] h-1 rounded-full"
+                style={{ width: `${Math.min(100, Math.round((myLogbook.length / 30) * 100))}%` }}
+              />
             </div>
           </CardContent>
         </Card>
-      </motion.div>
 
-      {/* 3. High-Impact Status / Onboarding Hero Banner */}
-      {!myPlacement ? (
-        myPlacementSubmission ? (
-          /* Placement Submitted - Under Review Banner */
-          <motion.div variants={item}>
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#002147] via-[#003366] to-[#001a33] text-white p-6 shadow-xl border border-white/10">
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="space-y-2 max-w-xl">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-400/20 border border-blue-400/30 text-blue-200 text-xs font-semibold">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-300" />
-                    Verification in Progress
-                  </div>
-                  <h2 className="text-xl md:text-2xl font-bold tracking-tight">
-                    Placement Submitted for Coordinator Review
-                  </h2>
-                  <p className="text-xs md:text-sm text-white/80 leading-relaxed">
-                    Your attachment details for <strong>{myPlacementSubmission.company_name || myPlacementSubmission.companyName}</strong> have been submitted to Department Coordinator <strong>Jameson Sibanda</strong>. You will receive an alert once verified.
-                  </p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <Button
-                    onClick={() => router.push("/student/placement")}
-                    className="h-11 px-5 bg-white/10 hover:bg-white/20 text-white border border-white/20 font-semibold text-xs rounded-xl transition-all"
-                  >
-                    View Submission Details
-                    <ArrowRight className="w-4 h-4 ml-1.5" />
-                  </Button>
-                </div>
-              </div>
+        {/* Metric 3 */}
+        <Card className="border-border/60 shadow-xs">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Deliverables
+            </p>
+            <div className="flex items-baseline justify-between">
+              <span className="text-lg font-bold text-foreground tracking-tight">
+                {mySubs.length} <span className="text-xs font-normal text-muted-foreground">Submitted</span>
+              </span>
             </div>
-          </motion.div>
-        ) : (
-          /* Action Required: Submit Placement Offer Banner */
-          <motion.div variants={item}>
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#002147] via-[#003366] to-[#001a33] text-white p-6 shadow-xl border border-white/15">
-              <div className="absolute -right-10 -bottom-10 w-56 h-56 rounded-full bg-gradient-to-br from-[#ff8c00]/25 to-transparent blur-3xl pointer-events-none" />
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="space-y-2 max-w-xl">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#ff8c00]/20 border border-[#ff8c00]/30 text-[#ffa726] text-xs font-bold uppercase tracking-wide">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    Step 1: Industrial Attachment Registration
-                  </div>
-                  <h2 className="text-xl md:text-2xl font-bold tracking-tight">
-                    Activate Your Work Related Learning (WRL)
-                  </h2>
-                  <p className="text-xs md:text-sm text-white/85 leading-relaxed">
-                    Welcome to the University of Zimbabwe Industrial Attachment portal. To start your digital logbook, receive mentor approvals, and schedule academic visits, please submit your company offer and industry supervisor details.
-                  </p>
-                </div>
+            <p className="text-[11px] text-muted-foreground">
+              Next: Placement Letter
+            </p>
+          </CardContent>
+        </Card>
 
-                <div className="flex flex-col sm:flex-row gap-3 shrink-0">
-                  <Button
-                    onClick={() => router.push("/student/submit-placement")}
-                    className="h-11 px-5 bg-gradient-to-r from-[#ff8c00] to-[#ffa726] hover:from-[#e67e00] hover:to-[#ff8c00] text-white font-bold text-sm rounded-xl shadow-lg hover:shadow-xl transition-all flex items-center justify-center gap-2 cursor-pointer"
-                  >
-                    Submit Placement Offer
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => router.push("/student/deadlines")}
-                    className="h-11 px-4 bg-white/10 hover:bg-white/15 text-white border-white/20 text-xs rounded-xl font-medium cursor-pointer"
-                  >
-                    View Guidelines & Dates
-                  </Button>
-                </div>
-              </div>
+        {/* Metric 4 */}
+        <Card className="border-border/60 shadow-xs">
+          <CardContent className="p-4 space-y-2">
+            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Academic Standing
+            </p>
+            <div className="flex items-baseline justify-between">
+              <span className="text-lg font-bold text-foreground tracking-tight">
+                {avgScore > 0 ? `${avgScore}%` : "Good Standing"}
+              </span>
             </div>
-          </motion.div>
-        )
-      ) : null}
-
-      {/* 4. Stat / KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Card 1: Placement Status */}
-        <motion.div variants={item}>
-          <Card className="border-border/60 hover:border-[#ff8c00]/40 hover:shadow-md transition-all duration-200">
-            <CardContent className="pt-5 pb-4 px-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Placement</p>
-                  <p className="text-xl font-bold text-foreground mt-1.5 truncate">
-                    {myPlacement ? "Active Attachment" : myPlacementSubmission ? "Under Review" : "Placement Needed"}
-                  </p>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <span
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        myPlacement ? "bg-emerald-500" : myPlacementSubmission ? "bg-blue-500 animate-pulse" : "bg-amber-500 animate-pulse"
-                      }`}
-                    />
-                    <span className="text-xs text-muted-foreground truncate">
-                      {myPlacement ? (myPlacement.company_name || "Assigned") : myPlacementSubmission ? "Coordinator review" : "Action required"}
-                    </span>
-                  </div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center border border-amber-500/20 shrink-0">
-                  <Briefcase className="w-5 h-5 text-[#ff8c00]" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Card 2: Digital Logbook */}
-        <motion.div variants={item}>
-          <Card className="border-border/60 hover:border-[#ff8c00]/40 hover:shadow-md transition-all duration-200">
-            <CardContent className="pt-5 pb-4 px-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Logbook</p>
-                  <p className="text-xl font-bold text-foreground mt-1.5">
-                    {myLogbook.length} / 30 <span className="text-xs font-normal text-muted-foreground">Weeks</span>
-                  </p>
-                  <div className="w-full bg-muted rounded-full h-1.5 mt-2">
-                    <div
-                      className="bg-gradient-to-r from-[#003366] to-[#ff8c00] h-1.5 rounded-full"
-                      style={{ width: `${Math.min(100, Math.round((myLogbook.length / 30) * 100))}%` }}
-                    />
-                  </div>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 shrink-0">
-                  <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Card 3: Pending Submissions */}
-        <motion.div variants={item}>
-          <Card className="border-border/60 hover:border-[#ff8c00]/40 hover:shadow-md transition-all duration-200">
-            <CardContent className="pt-5 pb-4 px-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Submissions</p>
-                  <p className="text-xl font-bold text-foreground mt-1.5">{pendingSubs}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {mySubs.length === 0 ? "No reports pending" : `${mySubs.length} total assigned`}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 shrink-0">
-                  <FileText className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Card 4: Average Score */}
-        <motion.div variants={item}>
-          <Card className="border-border/60 hover:border-[#ff8c00]/40 hover:shadow-md transition-all duration-200">
-            <CardContent className="pt-5 pb-4 px-5">
-              <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">Assessment</p>
-                  <p className="text-xl font-bold text-foreground mt-1.5">
-                    {avgScore > 0 ? `${avgScore}%` : "Pending"}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {myAssessments.length > 0 ? `${myAssessments.length} assessment${myAssessments.length > 1 ? "s" : ""}` : "Final WRL grade"}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shrink-0">
-                  <Award className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
+            <p className="text-[11px] text-muted-foreground">
+              Year 3 Industrial Attachment
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* 5. Quick Actions Bar */}
-      <motion.div variants={item}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <button
-            type="button"
-            onClick={() => router.push("/student/submit-placement")}
-            className="p-3.5 rounded-xl border border-border/70 hover:border-[#ff8c00]/50 bg-card hover:bg-muted/30 transition-all text-left group shadow-xs cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-lg bg-[#ff8c00]/10 flex items-center justify-center text-[#ff8c00] mb-2 group-hover:scale-105 transition-transform">
-              <Send className="w-4 h-4" />
-            </div>
-            <p className="text-xs font-bold text-foreground">Submit Placement</p>
-            <p className="text-[11px] text-muted-foreground">Register employer offer</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/student/logbook")}
-            className="p-3.5 rounded-xl border border-border/70 hover:border-blue-500/50 bg-card hover:bg-muted/30 transition-all text-left group shadow-xs cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 mb-2 group-hover:scale-105 transition-transform">
-              <BookOpen className="w-4 h-4" />
-            </div>
-            <p className="text-xs font-bold text-foreground">Weekly Logbook</p>
-            <p className="text-[11px] text-muted-foreground">Log tasks & reflections</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/student/deadlines")}
-            className="p-3.5 rounded-xl border border-border/70 hover:border-purple-500/50 bg-card hover:bg-muted/30 transition-all text-left group shadow-xs cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-2 group-hover:scale-105 transition-transform">
-              <CalendarDays className="w-4 h-4" />
-            </div>
-            <p className="text-xs font-bold text-foreground">Key Deadlines</p>
-            <p className="text-[11px] text-muted-foreground">View academic calendar</p>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/student/messages")}
-            className="p-3.5 rounded-xl border border-border/70 hover:border-emerald-500/50 bg-card hover:bg-muted/30 transition-all text-left group shadow-xs cursor-pointer"
-          >
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-2 group-hover:scale-105 transition-transform">
-              <MessageSquare className="w-4 h-4" />
-            </div>
-            <p className="text-xs font-bold text-foreground">Advisor Messages</p>
-            <p className="text-[11px] text-muted-foreground">Contact coordinator</p>
-          </button>
-        </div>
-      </motion.div>
-
-      {/* 6. Dual-Column Content Layout */}
+      {/* 4. High-Signal Dual-Column Layout */}
       <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left 2 Columns: Submissions & Milestones */}
-        <motion.div variants={item} className="lg:col-span-2 space-y-6">
+        {/* Left Column (2/3): Academic Deliverables & Regulations */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Deliverables Table */}
           <Card className="border-border/60 shadow-xs">
-            <CardHeader className="border-b border-border/40 pb-3.5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base font-bold">Recent Submissions & Milestones</CardTitle>
-                  <CardDescription className="text-xs">
-                    Academic reports, logbooks, and attachment deliverables
-                  </CardDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => router.push("/student/submissions")}
-                  className="text-xs text-[#ff8c00] hover:text-[#e67e00] hover:bg-[#ff8c00]/10"
+            <CardHeader className="p-5 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <CardTitle className="text-sm font-bold tracking-tight">
+                  Academic Deliverables & Milestones
+                </CardTitle>
+                <CardDescription className="text-xs mt-0.5">
+                  Mandatory curriculum submissions for WRL course accreditation
+                </CardDescription>
+              </div>
+
+              <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-lg text-xs">
+                <button
+                  type="button"
+                  onClick={() => setDeliverablesTab("all")}
+                  className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
+                    deliverablesTab === "all" ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                  }`}
                 >
-                  View All
-                  <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
+                  All (4)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliverablesTab("upcoming")}
+                  className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
+                    deliverablesTab === "upcoming" ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Upcoming
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDeliverablesTab("completed")}
+                  className={`px-2.5 py-1 rounded font-medium transition-colors cursor-pointer ${
+                    deliverablesTab === "completed" ? "bg-background text-foreground shadow-2xs" : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Completed
+                </button>
               </div>
             </CardHeader>
-            <CardContent className="pt-5">
-              {mySubs.length === 0 ? (
-                <div className="py-8 px-4 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-muted/50 border border-border/60 flex items-center justify-center mx-auto mb-3 text-muted-foreground">
-                    <FileText className="w-6 h-6" />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">No reports due yet</p>
-                  <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
-                    Once your placement is active, you will receive scheduled deliverables such as your <strong>Monthly Progress Reports</strong> and <strong>Final WRL Dissertation</strong>.
-                  </p>
-                  <Button
-                    onClick={() => router.push("/student/submit-placement")}
-                    variant="outline"
-                    className="mt-4 text-xs h-9 rounded-xl border-border/80"
+
+            <CardContent className="p-0">
+              <div className="divide-y divide-border/50">
+                {filteredDeliverables.map((item) => (
+                  <div
+                    key={item.id}
+                    className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-muted/15 transition-colors"
                   >
-                    <Briefcase className="w-3.5 h-3.5 mr-1.5 text-[#ff8c00]" />
-                    Check Placement Status
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-3.5">
-                  {mySubs.slice(0, 4).map((sub) => (
-                    <div
-                      key={sub.id}
-                      className="flex items-center justify-between p-3 rounded-xl border border-border/50 hover:bg-muted/20 transition-colors"
-                    >
-                      <div className="flex-1 min-w-0 mr-3">
-                        <p className="text-xs font-bold text-foreground truncate">{sub.title}</p>
-                        <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Due {formatDate(sub.due_date || "")}
-                        </p>
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-bold text-foreground truncate">{item.title}</p>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-muted text-muted-foreground font-medium hidden sm:inline">
+                          {item.type}
+                        </span>
                       </div>
-                      <Badge variant="outline" className={`text-xs font-semibold shrink-0 ${getStatusColor(sub.status)}`}>
-                        {sub.status}
-                      </Badge>
+                      <p className="text-[11px] text-muted-foreground flex items-center gap-2">
+                        <CalendarDays className="w-3 h-3" />
+                        Due Date: <span className="text-foreground font-medium">{item.dueDate}</span>
+                      </p>
                     </div>
-                  ))}
-                </div>
-              )}
+
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className={`text-[11px] px-2.5 py-0.5 rounded-full border font-semibold ${item.statusColor}`}>
+                        {item.status}
+                      </span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={item.action}
+                        className="h-7 text-xs px-2.5 rounded border-border cursor-pointer"
+                      >
+                        {item.actionLabel}
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
-        </motion.div>
 
-        {/* Right 1 Column: Guidelines & Coordinator Support */}
-        <motion.div variants={item} className="space-y-6">
-          {/* Departmental Coordinator Support Card */}
+          {/* Attachment Regulations & Guidelines */}
           <Card className="border-border/60 shadow-xs">
-            <CardHeader className="border-b border-border/40 pb-3">
+            <CardHeader className="p-5 border-b border-border/50">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <GraduationCap className="w-4 h-4 text-[#ff8c00]" />
-                Department Coordinator
+                <ShieldCheck className="w-4 h-4 text-[#003366] dark:text-[#ffa726]" />
+                University Attachment Regulations & Guidelines
               </CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 space-y-3 text-xs">
+            <CardContent className="p-5 text-xs text-muted-foreground space-y-3">
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="font-bold text-foreground">Duration Requirement</p>
+                  <p className="leading-relaxed text-[11px]">
+                    Minimum 30 continuous weeks of full-time supervised industrial placement within an accredited host organization.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-foreground">Weekly Logbook Sign-Off</p>
+                  <p className="leading-relaxed text-[11px]">
+                    Entries must be compiled weekly and approved by your workplace supervisor every Friday.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-foreground">Visiting Academic Assessment</p>
+                  <p className="leading-relaxed text-[11px]">
+                    A designated academic lecturer conducts on-site assessment visits during the mid-term window.
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-foreground">Final Dossier & Defense</p>
+                  <p className="leading-relaxed text-[11px]">
+                    Submissions of final technical reports and logbook records must be submitted prior to accreditation.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column (1/3): Coordinator Supervision & University Resources */}
+        <div className="space-y-6">
+          {/* Department Coordinator Card */}
+          <Card className="border-border/60 shadow-xs">
+            <CardHeader className="p-4 border-b border-border/50">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Academic Supervision
+              </p>
+              <CardTitle className="text-sm font-bold mt-0.5">Departmental Coordinator</CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4 text-xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-[#003366] text-white flex items-center justify-center font-bold text-sm shrink-0 shadow-xs">
+                <div className="w-9 h-9 rounded-lg bg-[#003366] text-white flex items-center justify-center font-bold text-xs shrink-0">
                   JS
                 </div>
                 <div className="min-w-0">
-                  <p className="font-bold text-foreground">Jameson Sibanda</p>
+                  <p className="font-bold text-foreground truncate">Jameson Sibanda</p>
                   <p className="text-[11px] text-muted-foreground truncate">WRL Coordinator • Business Studies</p>
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-muted/40 border border-border/40 space-y-1.5 text-[11px]">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              <div className="p-3 rounded-lg bg-muted/40 border border-border/50 space-y-1.5 text-[11px]">
+                <div className="flex items-center gap-2 text-muted-foreground truncate">
+                  <Mail className="w-3.5 h-3.5 shrink-0" />
                   <span className="truncate">peacesibx@gmail.com</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Building2 className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="truncate">UZ Main Campus, Commerce Block</span>
+                  <Building2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Commerce Block, UZ Campus</span>
                 </div>
               </div>
 
               <Button
                 onClick={() => router.push("/student/messages")}
-                className="w-full h-9 text-xs bg-[#003366] hover:bg-[#002244] text-white rounded-xl shadow-xs"
+                className="w-full h-8 text-xs bg-[#003366] hover:bg-[#002244] text-white rounded-lg cursor-pointer"
               >
                 <MessageSquare className="w-3.5 h-3.5 mr-1.5" />
-                Send Coordinator Message
+                Contact Coordinator
               </Button>
             </CardContent>
           </Card>
 
-          {/* Quick Attachment Checklist */}
+          {/* University Documents & Resources */}
           <Card className="border-border/60 shadow-xs">
-            <CardHeader className="border-b border-border/40 pb-3">
-              <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                Attachment Checklist
-              </CardTitle>
+            <CardHeader className="p-4 border-b border-border/50">
+              <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                Official Documents
+              </p>
+              <CardTitle className="text-sm font-bold mt-0.5">University Resources</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 space-y-2.5 text-xs">
-              <div className="flex items-start gap-2 text-[11px]">
-                <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${myPlacementSubmission ? "text-emerald-500" : "text-muted-foreground/50"}`} />
-                <div>
-                  <p className="font-semibold text-foreground">Submit Company Placement</p>
-                  <p className="text-muted-foreground">Provide employer offer letter</p>
-                </div>
-              </div>
+            <CardContent className="p-3 divide-y divide-border/40 text-xs">
+              <button
+                type="button"
+                onClick={() => router.push("/student/deadlines")}
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-muted/30 rounded transition-colors cursor-pointer"
+              >
+                <span className="font-medium text-foreground text-[11px]">WRL Handbook & Guidelines 2026</span>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
 
-              <div className="flex items-start gap-2 text-[11px]">
-                <CheckCircle2 className={`w-4 h-4 shrink-0 mt-0.5 ${myPlacement ? "text-emerald-500" : "text-muted-foreground/50"}`} />
-                <div>
-                  <p className="font-semibold text-foreground">Coordinator Verification</p>
-                  <p className="text-muted-foreground">Approved by department</p>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => router.push("/student/logbook")}
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-muted/30 rounded transition-colors cursor-pointer"
+              >
+                <span className="font-medium text-foreground text-[11px]">Digital Logbook Template & Rubrics</span>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
 
-              <div className="flex items-start gap-2 text-[11px]">
-                <CheckCircle2 className="w-4 h-4 text-muted-foreground/50 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-foreground">Weekly Logbook Sign-off</p>
-                  <p className="text-muted-foreground">Signed weekly by supervisor</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-2 text-[11px]">
-                <CheckCircle2 className="w-4 h-4 text-muted-foreground/50 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-foreground">Mid-Term Academic Visit</p>
-                  <p className="text-muted-foreground">Evaluation by lecturer</p>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => router.push("/student/submit-placement")}
+                className="w-full p-2.5 flex items-center justify-between text-left hover:bg-muted/30 rounded transition-colors cursor-pointer"
+              >
+                <span className="font-medium text-foreground text-[11px]">Employer Placement Letter Format</span>
+                <ExternalLink className="w-3.5 h-3.5 text-muted-foreground" />
+              </button>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
