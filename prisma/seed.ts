@@ -74,79 +74,25 @@ async function main() {
     },
   })
 
-  // 5. Seed Demo Users
-  const passwordHash = await bcrypt.hash("takeMyWill0112#2004", 10)
-  const defaultPwHash = await bcrypt.hash("password123", 10)
+  // 5. Seed Coordinator
+  const coordPwHash = await bcrypt.hash("Bethel0112#2004", 10)
 
-  // Student 1
-  const studentUser = await prisma.user.upsert({
-    where: { email: "student@uz.ac.zw" },
-    update: {},
-    create: {
-      email: "student@uz.ac.zw",
-      name: "Tatenda Chidziwa",
-      passwordHash,
-      role: "STUDENT",
-      regNumber: "R214567A",
-      student: {
-        create: {
-          regNumber: "R214567A",
-          programmeId: 166, // Computer Science / AI / Informatics
-          phone: "+263 77 123 4567",
-        },
-      },
-    },
-  })
-
-  // Supervisor 1
-  const supervisorUser = await prisma.user.upsert({
-    where: { email: "supervisor@econet.co.zw" },
-    update: {},
-    create: {
-      email: "supervisor@econet.co.zw",
-      name: "Eng. Farai Mutasa",
-      passwordHash,
-      role: "SUPERVISOR",
-      supervisor: {
-        create: {
-          companyId: econet.id,
-          position: "Lead Software Architect",
-          approved: true,
-        },
-      },
-    },
-  })
-
-  // Lecturer 1
-  const lecturerUser = await prisma.user.upsert({
-    where: { email: "lecturer@science.uz.ac.zw" },
-    update: {},
-    create: {
-      email: "lecturer@science.uz.ac.zw",
-      name: "Dr. K. Nyambo",
-      passwordHash,
-      role: "LECTURER",
-      lecturer: {
-        create: {
-          departmentId: 140,
-        },
-      },
-    },
-  })
-
-  // Coordinator 1
   const coordinatorUser = await prisma.user.upsert({
-    where: { email: "coordinator@science.uz.ac.zw" },
-    update: {},
+    where: { email: "peacesibx@gmail.com" },
+    update: {
+      name: "Jameson Sibanda",
+      passwordHash: coordPwHash,
+      role: "COORDINATOR",
+    },
     create: {
-      email: "coordinator@science.uz.ac.zw",
-      name: "Prof. H. Ndlovu",
-      passwordHash,
+      email: "peacesibx@gmail.com",
+      name: "Jameson Sibanda",
+      passwordHash: coordPwHash,
       role: "COORDINATOR",
     },
   })
 
-  console.log("Seeding complete! Database is now populated with full academic catalogue and demo accounts.")
+  console.log("Seeding complete! Database is populated with academic catalogue, companies, and Coordinator Jameson Sibanda.")
 }
 
 main()
