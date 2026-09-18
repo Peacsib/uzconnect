@@ -1,62 +1,166 @@
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600;1,700&display=swap');
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700&family=Playfair+Display:ital,wght@1,600;1,700&display=swap');
 
-@theme {
-  --color-background: oklch(0.98 0 0);
-  --color-foreground: oklch(0.15 0 0);
-  --color-card: oklch(1 0 0);
-  --color-card-foreground: oklch(0.15 0 0);
-  --color-primary: oklch(0.55 0.22 260);
-  --color-primary-foreground: oklch(0.98 0 0);
-  --color-secondary: oklch(0.96 0.01 260);
-  --color-secondary-foreground: oklch(0.25 0.05 260);
-  --color-muted: oklch(0.96 0.005 260);
-  --color-muted-foreground: oklch(0.55 0.02 260);
-  --color-accent: oklch(0.96 0.01 260);
-  --color-accent-foreground: oklch(0.25 0.05 260);
-  --color-destructive: oklch(0.55 0.22 20);
-  --color-destructive-foreground: oklch(0.98 0 0);
-  --color-border: oklch(0.9 0.005 260);
-  --color-input: oklch(0.9 0.005 260);
-  --color-ring: oklch(0.55 0.22 260);
-  --color-success: oklch(0.55 0.18 145);
-  --color-warning: oklch(0.7 0.18 80);
-  --radius: 0.625rem;
-  --font-sans: "Inter", "system-ui", sans-serif;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 150 14% 96%;
+    --foreground: 220 25% 14%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 14%;
+
+    --primary: 210 100% 20%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 30 95% 52%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 150 10% 91%;
+    --muted-foreground: 220 12% 45%;
+
+    --accent: 30 95% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 150 10% 87%;
+    --input: 150 10% 87%;
+    --ring: 210 100% 20%;
+
+    --radius: 0.625rem;
+
+    --sidebar-background: 210 100% 15%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 30 95% 52%;
+    --sidebar-primary-foreground: 210 100% 15%;
+    --sidebar-accent: 210 60% 25%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 210 50% 25%;
+    --sidebar-ring: 30 95% 52%;
+
+    --gold: 30 95% 52%;
+    --gold-foreground: 210 100% 20%;
+    --gold-glow: 30 100% 62%;
+    --surface: 0 0% 100%;
+    --text-secondary: 220 12% 45%;
+  }
+
+  .dark {
+    --background: 220 30% 8%;
+    --foreground: 210 20% 90%;
+    --card: 220 25% 12%;
+    --card-foreground: 210 20% 90%;
+    --popover: 220 25% 12%;
+    --popover-foreground: 210 20% 90%;
+    --primary: 30 95% 52%;
+    --primary-foreground: 220 30% 8%;
+    --secondary: 210 60% 25%;
+    --secondary-foreground: 210 20% 90%;
+    --muted: 220 20% 18%;
+    --muted-foreground: 210 15% 60%;
+    --accent: 30 95% 52%;
+    --accent-foreground: 220 30% 8%;
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 20% 20%;
+    --input: 220 20% 20%;
+    --ring: 30 95% 52%;
+    --sidebar-background: 220 30% 6%;
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 30 95% 52%;
+    --sidebar-primary-foreground: 220 30% 6%;
+    --sidebar-accent: 220 25% 15%;
+    --sidebar-accent-foreground: 210 20% 85%;
+    --sidebar-border: 220 25% 15%;
+    --sidebar-ring: 30 95% 52%;
+  }
 }
 
-.dark {
-  --color-background: oklch(0.1 0.02 260);
-  --color-foreground: oklch(0.95 0 0);
-  --color-card: oklch(0.14 0.02 260);
-  --color-card-foreground: oklch(0.95 0 0);
-  --color-primary: oklch(0.65 0.22 260);
-  --color-primary-foreground: oklch(0.1 0 0);
-  --color-secondary: oklch(0.2 0.03 260);
-  --color-secondary-foreground: oklch(0.9 0 0);
-  --color-muted: oklch(0.18 0.02 260);
-  --color-muted-foreground: oklch(0.6 0.02 260);
-  --color-accent: oklch(0.2 0.03 260);
-  --color-accent-foreground: oklch(0.9 0 0);
-  --color-destructive: oklch(0.6 0.22 20);
-  --color-border: oklch(0.25 0.03 260);
-  --color-input: oklch(0.25 0.03 260);
-  --color-ring: oklch(0.65 0.22 260);
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+    font-weight: 700;
+  }
 }
 
-* {
-  border-color: var(--color-border);
+@layer components {
+  .glass-card {
+    @apply bg-white/10 backdrop-blur-md border border-white/20 rounded-xl;
+  }
+  .gold-glow {
+    box-shadow: 0 0 20px hsl(var(--gold) / 0.3), 0 0 40px hsl(var(--gold) / 0.1);
+  }
+  .gold-underline {
+    @apply relative;
+  }
+  .gold-underline::after {
+    content: '';
+    @apply absolute bottom-0 left-0 w-full h-0.5 bg-accent rounded-full;
+    box-shadow: 0 0 8px hsl(var(--gold) / 0.5);
+  }
+  .shine-effect {
+    position: relative;
+    overflow: hidden;
+  }
+  .shine-effect::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 30%,
+      hsl(var(--gold) / 0.08) 50%,
+      transparent 70%
+    );
+    transform: translateX(-100%) rotate(0deg);
+    transition: transform 0.6s ease;
+  }
+  .shine-effect:hover::before {
+    transform: translateX(100%) rotate(0deg);
+  }
 }
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 9999px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-muted-foreground); }
+@media print {
+  /* Hide everything except main content */
+  nav, header, aside, footer,
+  [data-sidebar], [data-bottom-nav],
+  .no-print, button {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  main, [role="main"] {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}

@@ -1,117 +1,97 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { getStudentSubmissions } from "@/lib/queries/submissions"
-import { PageHeader } from "@/components/common/page-header"
-import { StatusBadge } from "@/components/common/status-badge"
-import { formatDate } from "@/lib/utils"
-import { FileText, Calendar, Upload, ExternalLink, CheckCircle2, Clock } from "lucide-react"
-import { SubmissionUploadModal } from "./upload-modal"
+"use client";
 
-export const metadata = { title: "Submissions | UZConnect" }
+import { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { formatDate, getStatusColor } from "@/utils/formatters";
+import { Upload, FileText, Eye, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { motion } from "framer-motion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { FileUploader } from "@/components/common/FileUploader";
+import { useAuth } from "@/context/AuthContext";
+import { EmptyState, emptyStates } from "@/components/common/EmptyState";
+import { useSubmissions } from "@/hooks/useApi";
 
-export default async function StudentSubmissionsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
+const MAX_ANIMATED = 10;
 
-  const placement = await getStudentSubmissions(session.user.id)
-  const submissions = placement?.submissions ?? []
+export default function Submissions() {
+  const { user } = useAuth();
+  const { data: submissions, isLoading } = useSubmissions();
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
+      </div>
+    );
+  }
+
+  const mySubs = submissions?.filter((s) => s.student_id === user?.id) || [];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Assessments & Required Submissions"
-        description="Submit reports, presentations, and final logbook documentation for academic grading."
-      />
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Submissions</h1>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button className="bg-primary text-primary-foreground">
+              <Upload className="w-4 h-4 mr-2" />Upload
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader><DialogTitle>Upload Submission</DialogTitle></DialogHeader>
+            <FileUploader
+              accept=".pdf,.docx,.doc"
+              maxSizeMB={10}
+              onFilesSelected={(files) => toast.success(`${files.length} file(s) ready to submit`)}
+            />
+            <div className="flex justify-end">
+              <Button className="bg-primary text-primary-foreground" onClick={() => toast.success("Submission uploaded (simulated)")}>
+                Submit
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
 
-      {submissions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {submissions.map((sub) => {
-            const hasAssessment = sub.assessments.length > 0
-            const latestAssessment = sub.assessments[0]
-
-            return (
-              <div key={sub.id} className="bg-card rounded-xl border p-6 shadow-sm flex flex-col justify-between space-y-4">
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                        <FileText size={20} />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-base">{sub.title}</h3>
-                        <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                          {sub.type.replace("_", " ")}
-                        </span>
-                      </div>
+      {mySubs.length === 0 ? (
+        <EmptyState {...emptyStates.submissions} />
+      ) : (
+        <div className="space-y-3">
+          {mySubs.map((sub, i) => (
+            <motion.div
+              key={sub.id}
+              initial={i < MAX_ANIMATED ? { opacity: 0, y: 10 } : false}
+              animate={{ opacity: 1, y: 0 }}
+              transition={i < MAX_ANIMATED ? { delay: i * 0.05 } : undefined}
+            >
+              <Card className="hover:border-primary/20 transition-colors">
+                <CardContent className="flex items-center justify-between py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/5 flex items-center justify-center">
+                      <FileText className="w-5 h-5 text-primary" />
                     </div>
-                    <StatusBadge status={sub.status} />
+                    <div>
+                      <p className="font-medium text-sm">{sub.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Due {formatDate(sub.due_date || "")}
+                      </p>
+                    </div>
                   </div>
-
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} className="text-primary" />
-                      <span>Due Date: <strong>{formatDate(sub.dueDate)}</strong></span>
-                    </div>
-                    {sub.submittedAt && (
-                      <div className="flex items-center gap-1.5 text-green-600 dark:text-green-400">
-                        <CheckCircle2 size={14} />
-                        <span>Submitted on {formatDate(sub.submittedAt)}</span>
-                      </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className={getStatusColor(sub.status)}>{sub.status}</Badge>
+                    {sub.file_url && (
+                      <Button variant="ghost" size="icon"><Eye className="w-4 h-4" /></Button>
                     )}
                   </div>
-
-                  {hasAssessment && (
-                    <div className="p-3 bg-muted/40 rounded-lg border text-xs space-y-1">
-                      <div className="flex items-center justify-between font-semibold">
-                        <span>Grade Awarded</span>
-                        <span className="text-primary font-bold text-sm">{latestAssessment.overallScore}%</span>
-                      </div>
-                      {latestAssessment.comments && (
-                        <p className="text-muted-foreground italic">"{latestAssessment.comments}"</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                <div className="pt-3 border-t flex items-center justify-between gap-2">
-                  {sub.fileUrl ? (
-                    <a
-                      href={sub.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
-                    >
-                      <ExternalLink size={14} />
-                      View Submitted Document
-                    </a>
-                  ) : (
-                    <span className="text-xs text-muted-foreground flex items-center gap-1">
-                      <Clock size={14} />
-                      Not yet submitted
-                    </span>
-                  )}
-
-                  {sub.status !== "GRADED" && (
-                    <SubmissionUploadModal
-                      submissionId={sub.id}
-                      title={sub.title}
-                      currentUrl={sub.fileUrl ?? ""}
-                    />
-                  )}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div className="bg-card rounded-xl border p-12 text-center max-w-md mx-auto space-y-3">
-          <FileText size={32} className="mx-auto text-muted-foreground" />
-          <p className="font-medium text-foreground">No Submissions Scheduled</p>
-          <p className="text-xs text-muted-foreground">
-            Your assessment schedule will appear here once your placement application is approved by the coordinator.
-          </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          ))}
         </div>
       )}
     </div>
-  )
+  );
 }

@@ -1,125 +1,116 @@
 "use client"
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { signOut, useSession } from "next-auth/react"
-import { cn, getInitials } from "@/lib/utils"
+import { useAuth } from "@/context/AuthContext"
 import {
-  LayoutDashboard, FileText, MapPin, BookOpen, MessageSquare,
-  Users, ClipboardCheck, BarChart3, Settings, LogOut, ChevronLeft,
-  Bell, Upload, Star, Building2, Award, Calendar,
+  LucideIcon, LayoutDashboard, Briefcase, FileText, CalendarDays,
+  MessageSquare, Star, Users, ClipboardCheck, BarChart3, Building2,
+  BookOpen, Send, CheckCircle
 } from "lucide-react"
-import { useState } from "react"
+import { placements } from "@/utils/mockData"
 
-const STUDENT_NAV = [
-  { label: "Overview", href: "/student", icon: LayoutDashboard },
-  { label: "My Placement", href: "/student/placement", icon: MapPin },
-  { label: "Submit Placement", href: "/student/submit-placement", icon: Upload },
-  { label: "Logbook", href: "/student/logbook", icon: BookOpen },
-  { label: "Submissions", href: "/student/submissions", icon: FileText },
-  { label: "Deadlines", href: "/student/deadlines", icon: Calendar },
-  { label: "Feedback", href: "/student/feedback", icon: Star },
-  { label: "Messages", href: "/student/messages", icon: MessageSquare },
-]
-
-const SUPERVISOR_NAV = [
-  { label: "Overview", href: "/supervisor", icon: LayoutDashboard },
-  { label: "My Students", href: "/supervisor/students", icon: Users },
-  { label: "Confirmations", href: "/supervisor/confirmations", icon: ClipboardCheck },
-  { label: "Logbook Review", href: "/supervisor/logbook", icon: BookOpen },
-  { label: "Submissions", href: "/supervisor/submissions", icon: FileText },
-  { label: "Assessments", href: "/supervisor/assessments", icon: Award },
-  { label: "Messages", href: "/supervisor/messages", icon: MessageSquare },
-]
-
-const LECTURER_NAV = [
-  { label: "Overview", href: "/lecturer", icon: LayoutDashboard },
-  { label: "Students", href: "/lecturer/students", icon: Users },
-  { label: "Placements", href: "/lecturer/placements", icon: MapPin },
-  { label: "Logbook", href: "/lecturer/logbook", icon: BookOpen },
-  { label: "Supervisors", href: "/lecturer/supervisors", icon: Building2 },
-  { label: "Assessments", href: "/lecturer/assessments", icon: Award },
-  { label: "Analytics", href: "/lecturer/analytics", icon: BarChart3 },
-  { label: "Messages", href: "/lecturer/messages", icon: MessageSquare },
-]
-
-const COORDINATOR_NAV = [
-  { label: "Overview", href: "/coordinator", icon: LayoutDashboard },
-  { label: "Students", href: "/coordinator/students", icon: Users },
-  { label: "Import Students", href: "/coordinator/students/import", icon: Upload },
-  { label: "Placements", href: "/coordinator/placements", icon: MapPin },
-  { label: "Rubrics", href: "/coordinator/rubrics", icon: ClipboardCheck },
-  { label: "Supervisors", href: "/coordinator/supervisors", icon: Building2 },
-  { label: "Messages", href: "/coordinator/messages", icon: MessageSquare },
-]
-
-const NAV_BY_ROLE: Record<string, typeof STUDENT_NAV> = {
-  STUDENT: STUDENT_NAV,
-  SUPERVISOR: SUPERVISOR_NAV,
-  LECTURER: LECTURER_NAV,
-  COORDINATOR: COORDINATOR_NAV,
+interface NavItem {
+  label: string
+  to: string
+  icon: LucideIcon
 }
 
-export function Sidebar() {
+const getStudentNav = (userId?: string): NavItem[] => {
+  const hasPlacement = placements.some((p) => p.studentId === userId && p.status === "active")
+  const items: NavItem[] = [
+    { label: "Overview", to: "/student", icon: LayoutDashboard },
+    { label: "My Placement", to: "/student/placement", icon: Briefcase },
+  ]
+  if (!hasPlacement) {
+    items.push({ label: "Submit Placement", to: "/student/submit-placement", icon: Send })
+  }
+  items.push(
+    { label: "Logbook", to: "/student/logbook", icon: BookOpen },
+    { label: "Submissions", to: "/student/submissions", icon: FileText },
+    { label: "Deadlines", to: "/student/deadlines", icon: CalendarDays },
+    { label: "Feedback", to: "/student/feedback", icon: Star },
+    { label: "Messages", to: "/student/messages", icon: MessageSquare },
+  )
+  return items
+}
+
+const supervisorNav: NavItem[] = [
+  { label: "Overview", to: "/supervisor", icon: LayoutDashboard },
+  { label: "My Students", to: "/supervisor/students", icon: Users },
+  { label: "Confirmations", to: "/supervisor/confirmations", icon: CheckCircle },
+  { label: "Logbook Review", to: "/supervisor/logbook", icon: BookOpen },
+  { label: "Submissions", to: "/supervisor/submissions", icon: FileText },
+  { label: "Assessments", to: "/supervisor/assessments", icon: ClipboardCheck },
+  { label: "Messages", to: "/supervisor/messages", icon: MessageSquare },
+]
+
+const lecturerNav: NavItem[] = [
+  { label: "Overview", to: "/lecturer", icon: LayoutDashboard },
+  { label: "Students", to: "/lecturer/students", icon: Users },
+  { label: "Placements", to: "/lecturer/placements", icon: Briefcase },
+  { label: "Logbook Overview", to: "/lecturer/logbook", icon: BookOpen },
+  { label: "Supervisors", to: "/lecturer/supervisors", icon: Building2 },
+  { label: "Assessments", to: "/lecturer/assessments", icon: ClipboardCheck },
+  { label: "Analytics", to: "/lecturer/analytics", icon: BarChart3 },
+  { label: "Messages", to: "/lecturer/messages", icon: MessageSquare },
+]
+
+const coordinatorNav: NavItem[] = [
+  { label: "Overview", to: "/coordinator", icon: LayoutDashboard },
+  { label: "Students", to: "/coordinator/students", icon: Users },
+  { label: "Placements", to: "/coordinator/placements", icon: ClipboardCheck },
+  { label: "Messages", to: "/coordinator/messages", icon: MessageSquare },
+]
+
+export function getNavItems(role?: string, userId?: string): NavItem[] {
+  switch (role?.toLowerCase()) {
+    case "student": return getStudentNav(userId)
+    case "supervisor": return supervisorNav
+    case "lecturer": return lecturerNav
+    case "coordinator": return coordinatorNav
+    default: return getStudentNav(userId)
+  }
+}
+
+interface SidebarProps {
+  open: boolean
+  onClose: () => void
+}
+
+export function AppSidebar({ open, onClose }: SidebarProps) {
+  const { user } = useAuth()
   const pathname = usePathname()
-  const { data: session } = useSession()
-  const [collapsed, setCollapsed] = useState(false)
-  const role = session?.user?.role as string
-  const navItems = NAV_BY_ROLE[role] ?? []
+
+  const role = user?.role || (pathname.startsWith("/supervisor") ? "supervisor" : pathname.startsWith("/lecturer") ? "lecturer" : pathname.startsWith("/coordinator") ? "coordinator" : "student")
+  const items = getNavItems(role, user?.id)
 
   return (
-    <aside className={cn(
-      "flex flex-col h-screen bg-card border-r transition-all duration-300 sticky top-0",
-      collapsed ? "w-16" : "w-60"
-    )}>
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-4 py-5 border-b">
-        <div className="w-8 h-8 shrink-0 bg-primary rounded-lg flex items-center justify-center">
-          <span className="text-primary-foreground font-bold text-sm">UZ</span>
-        </div>
-        {!collapsed && <span className="font-bold text-base tracking-tight">UZConnect</span>}
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto py-4 px-2 space-y-0.5">
-        {navItems.map((item) => {
-          const active = item.href === "/student" || item.href === "/supervisor" || item.href === "/lecturer" || item.href === "/coordinator"
-            ? pathname === item.href
-            : pathname.startsWith(item.href)
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all group",
-                active
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <item.icon size={18} className="shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          )
-        })}
-      </nav>
-
-      {/* User */}
-      <div className="border-t p-3 space-y-1">
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground text-sm transition"
-        >
-          <ChevronLeft size={18} className={cn("shrink-0 transition-transform", collapsed && "rotate-180")} />
-          {!collapsed && <span>Collapse</span>}
-        </button>
-        <button
-          onClick={() => signOut({ callbackUrl: "/login" })}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-muted-foreground hover:bg-destructive/10 hover:text-destructive text-sm transition"
-        >
-          <LogOut size={18} className="shrink-0" />
-          {!collapsed && <span>Sign out</span>}
-        </button>
-      </div>
-    </aside>
+    <>
+      {open && <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={onClose} />}
+      <aside className={`fixed top-14 left-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border z-50 transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
+        <nav className="p-3 space-y-1">
+          {items.map((item) => {
+            const active = pathname === item.to || (item.to !== "/student" && item.to !== "/supervisor" && item.to !== "/lecturer" && item.to !== "/coordinator" && pathname.startsWith(item.to))
+            return (
+              <Link
+                key={item.to}
+                href={item.to}
+                onClick={onClose}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-sidebar-accent text-sidebar-primary"
+                    : "text-sidebar-foreground hover:bg-sidebar-accent/50"
+                }`}
+              >
+                <item.icon className={`w-4 h-4 ${active ? "text-sidebar-primary" : ""}`} />
+                {item.label}
+                {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-primary" />}
+              </Link>
+            )
+          })}
+        </nav>
+      </aside>
+    </>
   )
 }

@@ -1,124 +1,50 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { getCoordinatorDashboard } from "@/lib/queries/dashboard"
-import { StatCard } from "@/components/common/stat-card"
-import { PageHeader } from "@/components/common/page-header"
-import { StatusBadge } from "@/components/common/status-badge"
-import { formatDate } from "@/lib/utils"
-import Link from "next/link"
-import { Users, MapPin, ClipboardCheck, Building2, Upload, ArrowRight } from "lucide-react"
+"use client";
 
-export const metadata = { title: "Coordinator Dashboard | UZConnect" }
+import { motion } from "framer-motion";
+import { Card, CardContent } from "@/components/ui/card";
+import { ClipboardList, Users, CheckCircle, Loader2 } from "lucide-react";
+import { usePlacementSubmissions, usePlacements } from "@/hooks/useApi";
 
-export default async function CoordinatorOverviewPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
+export default function CoordinatorOverview() {
+  const { data: placementSubmissions, isLoading: submissionsLoading } = usePlacementSubmissions();
+  const { data: placements, isLoading: placementsLoading } = usePlacements();
 
-  const data = await getCoordinatorDashboard()
-  const { totalStudents, activePlacements, pendingSubmissions, pendingSupervisors, recentSubmissions } = data
+  if (submissionsLoading || placementsLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
+      </div>
+    );
+  }
+
+  const pendingCount = placementSubmissions?.filter((ps) => (ps.status as any) === "pending" || ps.status === "pending_coordinator").length || 0;
+  const assignedCount = placements?.length || 0;
+
+  const stats = [
+    { label: "Pending Assignments", value: pendingCount, icon: ClipboardList, color: "text-accent" },
+    { label: "Assigned", value: assignedCount, icon: CheckCircle, color: "text-primary" },
+    { label: "Total Placements", value: (placementSubmissions?.length || 0), icon: Users, color: "text-muted-foreground" },
+  ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Institutional WRL Management Portal"
-        description="University of Zimbabwe Work-Related Learning Central Administration"
-        action={
-          <div className="flex items-center gap-2">
-            <Link
-              href="/coordinator/students/import"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground text-xs font-medium rounded-lg hover:bg-primary/90 transition shadow"
-            >
-              <Upload size={14} />
-              <span>Import Students</span>
-            </Link>
-          </div>
-        }
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Enrolled Students" value={totalStudents} icon={Users} subtitle="All departments" />
-        <StatCard title="Active Placements" value={activePlacements} icon={MapPin} subtitle="Currently placed" />
-        <StatCard title="Pending Applications" value={pendingSubmissions} icon={ClipboardCheck} subtitle="Awaiting review" />
-        <StatCard title="Pending Supervisors" value={pendingSupervisors} icon={Building2} subtitle="Unapproved accounts" />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">WRL Coordinator Dashboard</h1>
+        <p className="text-muted-foreground text-sm mt-1">Manage placement assignments and lecturers</p>
       </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Applications */}
-        <div className="bg-card rounded-xl border p-6 shadow-sm space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
-            <h3 className="font-bold text-base">Recent Placement Submissions</h3>
-            <Link href="/coordinator/placements" className="text-xs text-primary font-medium hover:underline">
-              Manage All
-            </Link>
-          </div>
-
-          {recentSubmissions.length > 0 ? (
-            <div className="space-y-2">
-              {recentSubmissions.map((s) => (
-                <div key={s.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/40 border text-xs">
-                  <div>
-                    <span className="font-semibold text-foreground block">{s.student.user.name}</span>
-                    <span className="text-muted-foreground">{s.companyName} • {s.student.programme.code}</span>
-                  </div>
-                  <StatusBadge status={s.status} />
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-6">No recent placement applications.</p>
-          )}
-        </div>
-
-        {/* Quick Administration */}
-        <div className="bg-card rounded-xl border p-6 shadow-sm space-y-4">
-          <h3 className="font-bold text-base border-b pb-3">Administrative Operations</h3>
-          <div className="space-y-2 text-sm">
-            <Link
-              href="/coordinator/students/import"
-              className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition"
-            >
-              <div className="flex items-center gap-2.5">
-                <Upload size={16} className="text-primary" />
-                <span>Bulk Import Student Cohort (CSV)</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {stats.map((s, i) => (
+          <Card key={i} className="border-border/50 hover:border-[#ff8c00]/30 hover:shadow-lg transition-all duration-200">
+            <CardContent className="pt-6 pb-5 text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff8c00]/10 to-[#ffa726]/10 border border-[#ff8c00]/20 mb-3">
+                <s.icon className={`w-6 h-6 ${s.color}`} />
               </div>
-              <ArrowRight size={14} className="text-muted-foreground" />
-            </Link>
-
-            <Link
-              href="/coordinator/placements"
-              className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition"
-            >
-              <div className="flex items-center gap-2.5">
-                <MapPin size={16} className="text-primary" />
-                <span>Review & Allocate Placement Applications</span>
-              </div>
-              <ArrowRight size={14} className="text-muted-foreground" />
-            </Link>
-
-            <Link
-              href="/coordinator/supervisors"
-              className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition"
-            >
-              <div className="flex items-center gap-2.5">
-                <Building2 size={16} className="text-primary" />
-                <span>Approve Workplace Mentor Accounts</span>
-              </div>
-              <ArrowRight size={14} className="text-muted-foreground" />
-            </Link>
-
-            <Link
-              href="/coordinator/rubrics"
-              className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition"
-            >
-              <div className="flex items-center gap-2.5">
-                <ClipboardCheck size={16} className="text-primary" />
-                <span>Manage WRL Assessment Rubrics</span>
-              </div>
-              <ArrowRight size={14} className="text-muted-foreground" />
-            </Link>
-          </div>
-        </div>
+              <p className="text-3xl font-bold text-foreground">{s.value}</p>
+              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mt-2">{s.label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-    </div>
-  )
+    </motion.div>
+  );
 }

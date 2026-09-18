@@ -1,73 +1,56 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { getSupervisorAssessments } from "@/lib/queries/submissions"
-import { PageHeader } from "@/components/common/page-header"
-import { StatusBadge } from "@/components/common/status-badge"
-import { formatDate } from "@/lib/utils"
-import { FileText, ExternalLink, Calendar } from "lucide-react"
+"use client";
 
-export const metadata = { title: "Submissions | UZConnect" }
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { formatDate } from "@/utils/formatters";
+import { Check, X, MessageSquare, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/context/AuthContext";
+import { EmptyState, emptyStates } from "@/components/common/EmptyState";
+import { usePlacements, useSubmissions } from "@/hooks/useApi";
 
-export default async function SupervisorSubmissionsPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
+export default function SubmissionsReview() {
+  const { user } = useAuth();
+  const { data: placements, isLoading: placementsLoading } = usePlacements();
+  const { data: submissions, isLoading: submissionsLoading } = useSubmissions();
 
-  const submissions = await getSupervisorAssessments(session.user.id)
+  if (placementsLoading || submissionsLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
+      </div>
+    );
+  }
+
+  const myStudentIds = placements?.filter((p) => p.supervisor_id === user?.id).map((p) => p.student_id) || [];
+  const pendingSubs = submissions?.filter((s) => myStudentIds.includes(s.student_id) && s.status === "submitted") || [];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Intern Deliverables & Submissions"
-        description="Review reports, portfolios, and presentations prepared by interns at your company."
-      />
-
-      {submissions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {submissions.map((sub) => (
-            <div key={sub.id} className="bg-card rounded-xl border p-6 shadow-sm space-y-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-bold text-base">{sub.title}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {sub.placement.student.user.name} ({sub.placement.student.regNumber})
-                  </p>
-                </div>
-                <StatusBadge status={sub.status} />
-              </div>
-
-              <div className="text-xs text-muted-foreground space-y-1">
-                <div>Programme: {sub.placement.student.programme.name}</div>
-                <div>Due Date: {formatDate(sub.dueDate)}</div>
-                {sub.submittedAt && (
-                  <div className="text-green-600 dark:text-green-400">
-                    Submitted: {formatDate(sub.submittedAt)}
-                  </div>
-                )}
-              </div>
-
-              {sub.fileUrl && (
-                <div className="pt-2 border-t">
-                  <a
-                    href={sub.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-xs text-primary font-medium hover:underline"
-                  >
-                    <ExternalLink size={13} />
-                    <span>View Submitted File</span>
-                  </a>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+      <h1 className="text-2xl font-bold">Submissions Review</h1>
+      {pendingSubs.length === 0 ? (
+        <EmptyState {...emptyStates.submissions} title="No pending submissions" description="All submissions have been reviewed. Check back later." />
       ) : (
-        <div className="bg-card rounded-xl border p-12 text-center max-w-md mx-auto space-y-3">
-          <FileText size={32} className="mx-auto text-muted-foreground" />
-          <p className="font-medium">No Submissions Found</p>
-          <p className="text-xs text-muted-foreground">Student deliverables will appear here.</p>
+        <div className="space-y-3">
+          {pendingSubs.map((sub) => {
+            return (
+              <Card key={sub.id}>
+                <CardContent className="py-4 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">{sub.title}</p>
+                    <p className="text-sm text-muted-foreground">Student: {sub.student_id} · Due {formatDate(sub.due_date || "")}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => toast.info("PDF viewer would open here")}><MessageSquare className="w-4 h-4" /></Button>
+                    <Button size="sm" className="bg-primary text-primary-foreground hover:bg-primary/90" onClick={() => toast.success("Approved!")}><Check className="w-4 h-4" /></Button>
+                    <Button size="sm" variant="destructive" onClick={() => toast.error("Rejected")}><X className="w-4 h-4" /></Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
-  )
+  );
 }

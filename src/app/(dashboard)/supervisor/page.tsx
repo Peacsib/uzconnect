@@ -1,69 +1,91 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { getSupervisorDashboard } from "@/lib/queries/dashboard"
-import { StatCard } from "@/components/common/stat-card"
-import { PageHeader } from "@/components/common/page-header"
-import { StatusBadge } from "@/components/common/status-badge"
-import Link from "next/link"
-import { Users, BookOpen, MessageSquare, Building2 } from "lucide-react"
+"use client";
 
-export const metadata = { title: "Supervisor Dashboard | UZConnect" }
+import { motion } from "framer-motion";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Users, FileText, AlertTriangle, Loader2, BookOpen, ArrowRight } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { usePlacements, useSubmissions, useLogbookEntries } from "@/hooks/useApi";
 
-export default async function SupervisorOverviewPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
+export default function SupervisorOverview() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const supervisorId = user?.id || "";
+  const { data: placements, isLoading: placementsLoading } = usePlacements();
+  const { data: submissions, isLoading: submissionsLoading } = useSubmissions();
+  const { data: logbookEntries, isLoading: logbookLoading } = useLogbookEntries();
 
-  const data = await getSupervisorDashboard(session.user.id)
-  if (!data) return <div className="p-4 text-muted-foreground">Supervisor profile not found.</div>
+  if (placementsLoading || submissionsLoading || logbookLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
+      </div>
+    );
+  }
 
-  const { supervisor, placements, pendingLogbooks, unreadMessages } = data
+  const myStudents = placements?.filter((p) => p.supervisor_id === supervisorId) || [];
+  const studentIds = myStudents.map((p) => p.student_id);
+  const pendingSubs = submissions?.filter((s) => studentIds.includes(s.student_id) && s.status === "submitted") || [];
+  const overdueSubs = submissions?.filter((s) => studentIds.includes(s.student_id) && s.status === "pending" && (s.due_date ? new Date(s.due_date) < new Date() : false)) || [];
+  
+  // Logbook statistics
+  const myLogbookEntries = logbookEntries?.filter((e) => studentIds.includes(e.student_id)) || [];
+  const pendingLogbooks = myLogbookEntries.filter((e) => e.status === 'submitted' || e.status === 'pending_supervisor').length;
+
+  const stats = [
+    { label: "Active Students", value: myStudents.length, icon: Users, color: "text-primary" },
+    { label: "Pending Reviews", value: pendingSubs.length, icon: FileText, color: "text-accent" },
+    { label: "Pending Logbooks", value: pendingLogbooks, icon: BookOpen, color: "text-blue-600" },
+    { label: "Overdue", value: overdueSubs.length, icon: AlertTriangle, color: "text-destructive" },
+  ];
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title={`Workplace Portal - ${session.user.name}`}
-        description={`${supervisor?.company.name} • ${supervisor?.position || "Mentor"}`}
-      />
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Company Interns" value={placements.length} icon={Users} subtitle="Students hosted" />
-        <StatCard title="Logbooks Pending" value={pendingLogbooks} icon={BookOpen} subtitle="Awaiting sign-off" />
-        <StatCard title="Unread Messages" value={unreadMessages} icon={MessageSquare} subtitle="Communications" />
-        <StatCard title="Host Company" value={supervisor?.company.name ?? "N/A"} icon={Building2} subtitle={supervisor?.company.city ?? "Harare"} />
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">Supervisor Dashboard</h1>
+        <p className="text-muted-foreground text-sm mt-1">Monitor your students' progress</p>
       </div>
-
-      <div className="bg-card rounded-xl border p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b pb-3">
-          <h3 className="font-bold text-base">Current Intern Attachments</h3>
-          <Link href="/supervisor/students" className="text-xs text-primary font-medium hover:underline">
-            View All
-          </Link>
-        </div>
-
-        {placements.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {placements.map((p) => (
-              <div key={p.id} className="p-4 rounded-xl border bg-muted/20 space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm text-foreground">{p.student.user.name}</span>
-                  <StatusBadge status={p.status} />
-                </div>
-                <p className="text-muted-foreground">Reg: {p.student.regNumber} • {p.student.programme.name}</p>
-                <div className="pt-2 flex justify-end">
-                  <Link
-                    href="/supervisor/logbook"
-                    className="px-3 py-1 bg-primary text-primary-foreground rounded-md font-medium hover:bg-primary/90"
-                  >
-                    Verify Logs
-                  </Link>
-                </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {stats.map((s, i) => (
+          <Card key={i} className="border-border/50 hover:border-[#ff8c00]/30 hover:shadow-lg transition-all duration-200">
+            <CardContent className="pt-6 pb-5 text-center">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff8c00]/10 to-[#ffa726]/10 border border-[#ff8c00]/20 mb-3">
+                <s.icon className={`w-6 h-6 ${s.color}`} />
               </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground text-center py-6">No active interns hosted currently.</p>
-        )}
+              <p className="text-3xl font-bold text-foreground">{s.value}</p>
+              <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide mt-2">{s.label}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-    </div>
-  )
+
+      {/* Logbook Review Widget */}
+      {pendingLogbooks > 0 && (
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="border-blue-200 bg-blue-50/50 dark:bg-blue-950/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                <BookOpen className="w-5 h-5" />
+                Pending Logbook Reviews
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                You have <span className="font-bold text-blue-600">{pendingLogbooks}</span> logbook {pendingLogbooks === 1 ? 'entry' : 'entries'} waiting for your review.
+              </p>
+              <Button 
+                onClick={() => router.push('/supervisor/logbook')}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                Review Logbooks
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+    </motion.div>
+  );
 }

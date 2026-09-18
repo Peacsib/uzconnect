@@ -1,127 +1,72 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { getStudentSubmissions } from "@/lib/queries/submissions"
-import { getStudentLogbook } from "@/lib/queries/logbook"
-import { PageHeader } from "@/components/common/page-header"
-import { formatDate } from "@/lib/utils"
-import { Star, MessageSquare, Award, BookOpen, CheckCircle } from "lucide-react"
+"use client";
 
-export const metadata = { title: "Feedback | UZConnect" }
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { formatDate } from "@/utils/formatters";
+import { Star, Loader2 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { EmptyState, emptyStates } from "@/components/common/EmptyState";
+import { useAssessments } from "@/hooks/useApi";
 
-export default async function StudentFeedbackPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
+export default function Feedback() {
+  const { user } = useAuth();
+  const { data: assessments, isLoading } = useAssessments();
 
-  const [submissionData, logbookData] = await Promise.all([
-    getStudentSubmissions(session.user.id),
-    getStudentLogbook(session.user.id),
-  ])
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
+      </div>
+    );
+  }
 
-  const assessedSubmissions = (submissionData?.submissions ?? []).filter((s) => s.assessments.length > 0)
-  const commentedLogbooks = (logbookData?.logbookEntries ?? []).filter(
-    (e) => e.supervisorComment || e.lecturerComment
-  )
+  const myAssessments = assessments || [];
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="Supervision Feedback & Assessment Scores"
-        description="Comprehensive evaluation records, rubric grading, and mentor comments."
-      />
-
-      <div className="space-y-6">
-        {/* Assessment rubric reviews */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-            <Award size={18} className="text-primary" />
-            <span>Academic & Industrial Report Evaluations</span>
-          </h3>
-
-          {assessedSubmissions.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {assessedSubmissions.map((sub) => {
-                const assessment = sub.assessments[0]
-                return (
-                  <div key={sub.id} className="bg-card rounded-xl border p-5 shadow-sm space-y-4">
-                    <div className="flex items-center justify-between border-b pb-3">
-                      <h4 className="font-semibold text-base">{sub.title}</h4>
-                      <span className="text-lg font-bold text-primary">{assessment.overallScore}%</span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="p-2 rounded-lg bg-muted/40 border">
-                        <span className="text-muted-foreground block text-[10px]">Technical</span>
-                        <span className="font-bold text-foreground">{assessment.technicalScore}%</span>
-                      </div>
-                      <div className="p-2 rounded-lg bg-muted/40 border">
-                        <span className="text-muted-foreground block text-[10px]">Professional</span>
-                        <span className="font-bold text-foreground">{assessment.professionalScore}%</span>
-                      </div>
-                      <div className="p-2 rounded-lg bg-muted/40 border">
-                        <span className="text-muted-foreground block text-[10px]">Communication</span>
-                        <span className="font-bold text-foreground">{assessment.communicationScore}%</span>
-                      </div>
-                    </div>
-
-                    {assessment.comments && (
-                      <div className="p-3 bg-muted/30 rounded-lg text-xs space-y-1">
-                        <span className="font-semibold text-muted-foreground flex items-center gap-1">
-                          <MessageSquare size={12} />
-                          Assessor Remarks
-                        </span>
-                        <p className="italic text-foreground">"{assessment.comments}"</p>
-                      </div>
-                    )}
+      <h1 className="text-2xl font-bold">Feedback & Assessments</h1>
+      {myAssessments.length === 0 ? (
+        <EmptyState {...emptyStates.assessments} />
+      ) : (
+        <Accordion type="multiple" className="space-y-3">
+          {myAssessments.map((a) => (
+            <AccordionItem key={a.id} value={a.id} className="border rounded-lg px-4">
+              <AccordionTrigger className="hover:no-underline">
+                <div className="flex items-center gap-3 text-left">
+                  <Star className="w-4 h-4 text-accent" />
+                  <div>
+                    <p className="font-medium text-sm">Assessment – {formatDate(a.created_at || a.date || "")}</p>
+                    <p className="text-xs text-muted-foreground">
+                      Overall Score: {a.overall_score}%
+                    </p>
                   </div>
-                )
-              })}
-            </div>
-          ) : (
-            <div className="p-8 border rounded-xl bg-card text-center text-xs text-muted-foreground">
-              No assessed report submissions yet.
-            </div>
-          )}
-        </div>
-
-        {/* Weekly Logbook comments */}
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold flex items-center gap-2 text-foreground">
-            <BookOpen size={18} className="text-primary" />
-            <span>Weekly Logbook Supervisor Comments</span>
-          </h3>
-
-          {commentedLogbooks.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {commentedLogbooks.map((entry) => (
-                <div key={entry.id} className="bg-card rounded-xl border p-5 shadow-sm space-y-3">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <span className="font-semibold text-sm">Week {entry.week} Logbook</span>
-                    <span className="text-xs text-muted-foreground">{formatDate(entry.weekEndingDate)}</span>
-                  </div>
-
-                  {entry.supervisorComment && (
-                    <div className="text-xs space-y-1">
-                      <span className="font-semibold text-primary">Industry Supervisor:</span>
-                      <p className="text-muted-foreground italic">"{entry.supervisorComment}"</p>
-                    </div>
-                  )}
-
-                  {entry.lecturerComment && (
-                    <div className="text-xs space-y-1">
-                      <span className="font-semibold text-primary">Academic Supervisor:</span>
-                      <p className="text-muted-foreground italic">"{entry.lecturerComment}"</p>
-                    </div>
-                  )}
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 border rounded-xl bg-card text-center text-xs text-muted-foreground">
-              No weekly supervisor remarks recorded yet.
-            </div>
-          )}
-        </div>
-      </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-2">
+                <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className="p-2 rounded bg-muted">
+                    <p className="text-muted-foreground">Technical</p>
+                    <p className="font-semibold">{a.technical_score}%</p>
+                  </div>
+                  <div className="p-2 rounded bg-muted">
+                    <p className="text-muted-foreground">Professional</p>
+                    <p className="font-semibold">{a.professional_score}%</p>
+                  </div>
+                  <div className="p-2 rounded bg-muted">
+                    <p className="text-muted-foreground">Communication</p>
+                    <p className="font-semibold">{a.communication_score}%</p>
+                  </div>
+                </div>
+                {a.comments && (
+                  <div className="p-3 rounded-lg bg-muted">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Comments</p>
+                    <p className="text-sm">{a.comments}</p>
+                  </div>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
+      )}
     </div>
-  )
+  );
 }

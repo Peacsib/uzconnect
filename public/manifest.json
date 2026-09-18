@@ -1,0 +1,15 @@
+{
+  "name": "WRL Connect",
+  "short_name": "WRL",
+  "description": "University of Zimbabwe Work-Related Learning Management System",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#003366",
+  "theme_color": "#003366",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/uz-crest.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/uz-crest.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/uz-crest.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

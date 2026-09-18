@@ -1,9 +1,5 @@
-import { redirect } from "next/navigation"
-import { auth } from "@/lib/auth"
+import HomePageContent from "@/components/auth/HomePageContent";
 
-export default async function RootPage() {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
-  const role = (session.user.role as string).toLowerCase()
-  redirect(`/${role}`)
+export default function Page() {
+  return <HomePageContent />;
 }

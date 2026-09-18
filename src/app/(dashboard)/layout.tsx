@@ -1,21 +1,25 @@
-import { auth } from "@/lib/auth"
-import { redirect } from "next/navigation"
-import { Sidebar } from "@/components/common/sidebar"
-import { Header } from "@/components/common/header"
+"use client";
 
-export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const session = await auth()
-  if (!session?.user) redirect("/login")
+import { useState } from "react";
+import { Header } from "@/components/common/Header";
+import { AppSidebar } from "@/components/common/Sidebar";
+import { BottomNav } from "@/components/common/BottomNav";
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto bg-background p-6">
-          {children}
-        </main>
-      </div>
+    <div className="min-h-screen bg-background">
+      <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
+      <AppSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <main className="lg:ml-60 pb-20 lg:pb-6 pt-4 px-4 md:px-6">
+        {children}
+      </main>
+      <BottomNav />
     </div>
-  )
+  );
 }

@@ -1,31 +1,25 @@
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import "./globals.css"
-import { SessionProvider } from "next-auth/react"
-import { Toaster } from "sonner"
-import { ThemeProvider } from "@/components/common/theme-provider"
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
+import type { Metadata } from "next";
+import "./globals.css";
+import { Providers } from "@/components/providers/Providers";
 
 export const metadata: Metadata = {
-  title: {
-    default: "UZConnect",
-    template: "%s | UZConnect",
+  title: "WRL Connect - University of Zimbabwe",
+  description: "Work-Related Learning Platform for University of Zimbabwe",
+  icons: {
+    icon: "/uz-crest.png",
   },
-  description: "Work-Related Learning Management System for the University of Zimbabwe",
-}
+};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={inter.variable}>
-        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-          <SessionProvider>
-            {children}
-            <Toaster richColors position="top-right" />
-          </SessionProvider>
-        </ThemeProvider>
+      <body className="antialiased min-h-screen bg-background text-foreground">
+        <Providers>{children}</Providers>
       </body>
     </html>
-  )
+  );
 }

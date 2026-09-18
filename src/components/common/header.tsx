@@ -1,40 +1,53 @@
-"use client"
-import { useSession } from "next-auth/react"
-import { Bell, Sun, Moon } from "lucide-react"
-import { useTheme } from "next-themes"
-import { getInitials } from "@/lib/utils"
+"use client";
 
-export function Header({ title }: { title?: string }) {
-  const { data: session } = useSession()
-  const { theme, setTheme } = useTheme()
-  const user = session?.user
+import { useState } from "react";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { NetworkStatus } from "@/components/common/NetworkStatus";
+import { NotificationBell } from "@/components/common/NotificationBell";
+import { ThemeToggle } from "@/components/common/ThemeToggle";
+import { LogOut, Menu } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+// Cloudinary CDN URL for optimized UZ crest
+const UZ_CREST = "/uz-crest.png";
+
+interface Props {
+  onMenuToggle?: () => void;
+}
+
+export function Header({ onMenuToggle }: Props) {
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push("/login");
+  };
 
   return (
-    <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b px-6 py-3.5 flex items-center justify-between">
-      <div>
-        {title && <h1 className="text-lg font-semibold">{title}</h1>}
+    <header className="h-14 border-b bg-card flex items-center justify-between px-4 sticky top-0 z-30">
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuToggle}>
+          <Menu className="w-5 h-5" />
+        </Button>
+        <img src={UZ_CREST} alt="UZ" className="w-8 h-8" />
+        <span className="font-bold text-foreground hidden sm:block">WRL Connect</span>
       </div>
       <div className="flex items-center gap-2">
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition"
-        >
-          {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-        </button>
-        <button className="w-9 h-9 flex items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground transition relative">
-          <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary" />
-        </button>
-        <div className="flex items-center gap-2.5 ml-1">
-          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-semibold">
-            {user?.name ? getInitials(user.name) : "?"}
+        <NetworkStatus />
+        <ThemeToggle />
+        <NotificationBell />
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-sm font-medium">
+            {user?.name?.charAt(0)}
           </div>
-          <div className="hidden sm:block">
-            <p className="text-sm font-medium leading-tight">{user?.name}</p>
-            <p className="text-xs text-muted-foreground capitalize">{(user?.role as string)?.toLowerCase()}</p>
-          </div>
+          <span className="text-sm font-medium hidden md:block">{user?.name}</span>
         </div>
+        <Button variant="ghost" size="icon" onClick={handleLogout}>
+          <LogOut className="w-4 h-4" />
+        </Button>
       </div>
     </header>
-  )
+  );
 }
