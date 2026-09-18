@@ -1,16 +1,16 @@
+import { Suspense } from "react"
 import { Metadata } from "next"
 import { LoginForm } from "./login-form"
 
-export const metadata: Metadata = { title: "Sign In" }
+export const metadata: Metadata = {
+  title: "WRL Connect - University of Zimbabwe",
+  description: "Work-Related Learning Management System for University of Zimbabwe",
+}
 
 export default function LoginPage() {
   return (
-    <div>
-      <div className="mb-8">
-        <h2 className="text-3xl font-bold tracking-tight">Welcome back</h2>
-        <p className="text-muted-foreground mt-2">Sign in to your UZConnect account</p>
-      </div>
+    <Suspense fallback={<div className="min-h-screen bg-[#0a0e14]" />}>
       <LoginForm />
-    </div>
+    </Suspense>
   )
 }

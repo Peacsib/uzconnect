@@ -6,8 +6,8 @@ import bcrypt from "bcryptjs"
 import { z } from "zod"
 
 const loginSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(1),
+  email: z.string().min(1, "Email or Registration Number is required"),
+  password: z.string().min(1, "Password is required"),
 })
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -20,7 +20,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     Credentials({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email or Reg Number", type: "text" },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
@@ -28,9 +28,15 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (!parsed.success) return null
 
         const { email, password } = parsed.data
+        const identifier = email.trim()
 
-        const user = await prisma.user.findUnique({
-          where: { email },
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: { equals: identifier, mode: "insensitive" } },
+              { regNumber: { equals: identifier, mode: "insensitive" } },
+            ],
+          },
         })
 
         if (!user) return null
