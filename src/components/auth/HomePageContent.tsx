@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { useAuth } from "@/context/AuthContext";
 import { loginSchema, LoginFormData } from "@/utils/validators";
 import { Input } from "@/components/ui/input";
@@ -24,9 +24,6 @@ import {
   Wifi,
   Lock,
   ArrowRight,
-  Scale,
-  ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 
 // Static assets
@@ -36,35 +33,24 @@ const BG_IMAGE = "/homepage-background.webp";
 const features = [
   {
     icon: BookOpen,
-    title: "Digital Logbooks",
-    desc: "Offline-ready weekly entries & encrypted sign-offs",
-    tag: "Paperless",
+    title: "Digital Logbook",
+    desc: "Track your placement progress daily",
   },
   {
     icon: Users,
-    title: "Tripartite Nexus",
-    desc: "Students, industry mentors & academic assessors",
-    tag: "Synchronized",
+    title: "Connected",
+    desc: "Students, supervisors & lecturers in one place",
   },
   {
-    icon: Scale,
-    title: "Verified Rubrics",
-    desc: "Standardized 40% mentor & 60% faculty weighting",
-    tag: "Institutional",
+    icon: CheckCircle,
+    title: "Verified Assessments",
+    desc: "Transparent grading & feedback",
   },
   {
-    icon: ShieldCheck,
-    title: "Secure Compliance",
-    desc: "Centralized coordinator governance & audit trails",
-    tag: "Accredited",
+    icon: Wifi,
+    title: "Offline Ready",
+    desc: "Works even without internet access",
   },
-];
-
-const focalPhrases = [
-  { text: "Industry Placements", highlight: "Accredited & Verified" },
-  { text: "Digital Logbooks", highlight: "Paperless & Offline" },
-  { text: "Tripartite Mentorship", highlight: "Student • Mentor • Assessor" },
-  { text: "Standardized Scoring", highlight: "Institutional Rubrics" },
 ];
 
 export default function HomePage() {
@@ -85,15 +71,6 @@ export default function HomePage() {
 
   // Dynamic 3D Cube depth (half-width) measurement
   const cubeRef = useRef<HTMLDivElement>(null);
-  // Focal cycler state for kinetic hero typography
-  const [focalIndex, setFocalIndex] = useState(0);
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setFocalIndex((prev) => (prev + 1) % focalPhrases.length);
-    }, 3200);
-    return () => clearInterval(timer);
-  }, []);
   const [cubeDepth, setCubeDepth] = useState(200);
 
   useEffect(() => {
@@ -199,109 +176,103 @@ export default function HomePage() {
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/90 via-[#002147]/85 to-[#003d66]/85" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30" />
-        <div className="absolute -top-20 -left-20 w-72 h-72 bg-[#ff8c00]/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/85 via-[#002147]/75 to-[#003d66]/80" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
 
         <div className="relative z-10 flex flex-col justify-between p-6 text-white flex-1">
-          {/* Top Institutional Header */}
           <motion.div
-            initial={{ opacity: 0, y: -16 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center justify-between pt-2"
+            transition={{ duration: 0.6 }}
+            className="flex items-center gap-2.5 pt-4"
           >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-md">
-                <img src={UZ_CREST} alt="UZ Crest" className="w-7 h-7 object-contain drop-shadow" />
-              </div>
-              <div>
-                <h1 className="text-sm font-bold tracking-tight text-white">WRL Connect</h1>
-                <p className="text-[11px] text-white/70">University of Zimbabwe</p>
-              </div>
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-[10px] font-medium text-white/90">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#ff8c00] animate-pulse" />
-              2026/2027
+            <img src={UZ_CREST} alt="UZ Crest" className="w-10 h-10 drop-shadow-lg" />
+            <div>
+              <h1 className="text-base font-semibold tracking-tight">WRL Connect</h1>
+              <p className="text-xs text-white/75">University of Zimbabwe</p>
             </div>
           </motion.div>
 
-          {/* Hero Typography */}
-          <div className="space-y-4 my-auto py-6">
-            <div className="space-y-1">
-              <div className="overflow-hidden">
-                <motion.h2
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.1 }}
-                  className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white leading-tight"
-                >
-                  Work-Related Learning,
-                </motion.h2>
-              </div>
-              <div className="overflow-hidden">
-                <motion.h2
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.18 }}
-                  className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white/90 leading-tight"
-                >
-                  Architected for
-                </motion.h2>
-              </div>
-              <div className="h-10 relative overflow-hidden flex items-center">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={focalIndex}
-                    initial={{ y: 20, opacity: 0, filter: "blur(4px)" }}
-                    animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-                    exit={{ y: -20, opacity: 0, filter: "blur(4px)" }}
-                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute left-0 flex items-center gap-2"
-                  >
-                    <span className="text-2xl sm:text-3xl font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#ffb74d] via-[#ff8c00] to-[#ffa000]">
-                      {focalPhrases[focalIndex].text}
-                    </span>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-
-            <motion.p
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1], delay: 0.3 }}
-              className="text-xs sm:text-sm text-white/80 max-w-md leading-relaxed font-normal"
-            >
-              The university's digital nexus connecting students, workplace mentors, and academic assessors with verified weekly logbooks and objective grading.
-            </motion.p>
-          </div>
-
-          {/* Feature Badges */}
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="space-y-4 flex-1 flex flex-col justify-center"
+          >
+            <h2
+              className="text-3xl font-bold leading-tight tracking-tight text-white"
+              style={{ textShadow: "0 2px 16px rgba(0,0,0,0.5)" }}
+            >
+              <span
+                className="inline-block relative"
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontStyle: "italic",
+                  fontSize: "1.15em",
+                  fontWeight: 600,
+                  color: "#ffa726",
+                  textShadow:
+                    "0 2px 20px rgba(255, 140, 0, 0.4), 0 0 30px rgba(255, 140, 0, 0.2)",
+                }}
+              >
+                Your
+                <svg
+                  className="absolute -bottom-1 left-0 w-full h-2"
+                  viewBox="0 0 100 8"
+                  preserveAspectRatio="none"
+                >
+                  <motion.path
+                    d="M0,7 Q25,0 50,5 T100,4"
+                    stroke="#ff8c00"
+                    strokeWidth="1.5"
+                    fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.8 }}
+                    transition={{ duration: 1.1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </svg>
+              </span>{" "}
+              Work-Related
+              <br />
+              Learning Journey,
+              <br />
+              <motion.span 
+                initial={{ opacity: 0, filter: "blur(4px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="text-[#ff8c00] inline-block"
+                style={{ textShadow: "0 2px 24px rgba(255, 140, 0, 0.5)" }}
+              >
+                Simplified.
+              </motion.span>
+            </h2>
+            <p className="text-sm text-white/90 max-w-md leading-relaxed font-normal">
+              Manage placements, submit logbooks, and stay connected with your supervisors and
+              lecturers — all in one platform.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-2 gap-2.5 pb-2"
+            className="grid grid-cols-2 gap-3 pb-4"
           >
             {features.map((f, idx) => (
               <motion.div
                 key={f.title}
-                initial={{ opacity: 0, x: -16 }}
+                initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.45 + idx * 0.08 }}
-                className="p-2.5 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/15"
+                transition={{ duration: 0.4, delay: 0.5 + idx * 0.1 }}
+                className="flex items-start gap-2 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
-                    <f.icon className="w-3.5 h-3.5 text-[#ff8c00]" />
-                  </div>
-                  <span className="text-[9px] font-mono text-[#ffa726] bg-[#ff8c00]/15 px-1.5 py-0.2 rounded font-medium">
-                    {f.tag}
-                  </span>
+                <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center shrink-0 border border-white/20">
+                  <f.icon className="w-4 h-4 text-white/90" />
                 </div>
-                <h3 className="font-semibold text-xs text-white/95">{f.title}</h3>
-                <p className="text-[10px] text-white/60 leading-tight mt-0.5 line-clamp-1">{f.desc}</p>
+                <div>
+                  <h3 className="font-semibold text-xs mb-0.5 text-white/95">{f.title}</h3>
+                  <p className="text-[11px] text-white/60 leading-snug">{f.desc}</p>
+                </div>
               </motion.div>
             ))}
           </motion.div>
@@ -310,15 +281,20 @@ export default function HomePage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.8 }}
-            className="text-center py-2"
+            className="text-center pb-6"
           >
-            <p className="text-xs text-white/70 mb-1.5 font-medium">Swipe or scroll to sign in</p>
+            <p className="text-xs text-white/70 mb-2">Swipe up to sign in</p>
             <motion.div
-              animate={{ y: [0, 6, 0] }}
+              animate={{ y: [0, 8, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
               className="inline-block"
             >
-              <svg className="w-5 h-5 text-white/70 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-6 h-6 text-white/70 mx-auto"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
             </motion.div>
@@ -335,134 +311,102 @@ export default function HomePage() {
           backgroundPosition: "center",
         }}
       >
-        {/* Layered cinematic gradients for enterprise atmospheric depth */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/90 via-[#002147]/80 to-[#003d66]/85" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/30" />
-        
-        {/* Atmospheric ambient glows */}
-        <div className="absolute -top-32 -left-32 w-[480px] h-[480px] bg-[#ff8c00]/12 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-32 -right-32 w-[480px] h-[480px] bg-[#003366]/40 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/80 via-[#002147]/70 to-[#003d66]/75" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20" />
 
-        <div className="relative z-10 flex flex-col justify-between p-12 lg:p-14 text-white w-full h-full">
-          {/* Top Institutional Header */}
+        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
           <motion.div
-            initial={{ opacity: 0, y: -16 }}
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="flex items-center justify-between"
+            transition={{ duration: 0.6 }}
+            className="flex items-center gap-2.5"
           >
-            <div className="flex items-center gap-3">
-              <div className="relative group">
-                <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-amber-500/20 to-blue-500/20 blur-sm opacity-70 group-hover:opacity-100 transition duration-500" />
-                <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-md border border-white/20 flex items-center justify-center shadow-lg">
-                  <img src={UZ_CREST} alt="UZ Crest" className="w-8 h-8 object-contain drop-shadow-md" />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-base font-bold tracking-tight text-white">WRL Connect</span>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-[#ff8c00]/20 text-[#ffa726] border border-[#ff8c00]/30">
-                    v2.6
-                  </span>
-                </div>
-                <p className="text-xs text-white/70 font-medium">University of Zimbabwe</p>
-              </div>
-            </div>
-
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.06] border border-white/15 backdrop-blur-md text-[11px] font-medium text-white/90 shadow-sm">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ff8c00] opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-[#ff8c00]" />
-              </span>
-              <span>2026/2027 Academic Year</span>
+            <img src={UZ_CREST} alt="UZ Crest" className="w-10 h-10 drop-shadow-lg" />
+            <div>
+              <h1 className="text-base font-semibold tracking-tight">WRL Connect</h1>
+              <p className="text-xs text-white/75">University of Zimbabwe</p>
             </div>
           </motion.div>
 
-          {/* Masked Kinetic Headline */}
-          <div className="space-y-4 my-auto py-8">
-            <div className="space-y-1">
-              <div className="overflow-hidden">
-                <motion.h2
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.15 }}
-                  className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white leading-[1.12]"
-                >
-                  Work-Related Learning,
-                </motion.h2>
-              </div>
-
-              <div className="overflow-hidden">
-                <motion.h2
-                  initial={{ y: "100%", opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.23 }}
-                  className="text-4xl lg:text-5xl font-extrabold tracking-tight text-white/90 leading-[1.12]"
-                >
-                  Architected for
-                </motion.h2>
-              </div>
-
-              {/* Dynamic Focal Cycler with Directional Blur */}
-              <div className="h-14 sm:h-16 relative overflow-hidden flex items-center">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={focalIndex}
-                    initial={{ y: 32, opacity: 0, filter: "blur(6px)" }}
-                    animate={{ y: 0, opacity: 1, filter: "blur(0px)" }}
-                    exit={{ y: -32, opacity: 0, filter: "blur(6px)" }}
-                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                    className="absolute left-0 flex items-center gap-3"
-                  >
-                    <span className="text-3xl sm:text-4xl lg:text-[44px] font-black tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-[#ffb74d] via-[#ff8c00] to-[#ffa000] drop-shadow-sm font-sans">
-                      {focalPhrases[focalIndex].text}
-                    </span>
-                    <span className="hidden xl:inline-block px-2.5 py-0.5 rounded-full text-[11px] font-mono uppercase tracking-wider font-semibold bg-white/10 text-white/80 border border-white/15 backdrop-blur-sm">
-                      {focalPhrases[focalIndex].highlight}
-                    </span>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-
-            <motion.p
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1], delay: 0.4 }}
-              className="text-base text-white/80 max-w-lg leading-relaxed font-normal pt-1"
-            >
-              The centralized digital nexus uniting <span className="text-white font-medium">students</span>, <span className="text-white font-medium">workplace mentors</span>, and <span className="text-white font-medium">academic assessors</span> with automated compliance, verified weekly logbooks, and objective grading.
-            </motion.p>
-          </div>
-
-          {/* Refined Telemetry Feature Tiles (Bottom 2x2) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.45 }}
-            className="grid grid-cols-2 gap-3.5 pt-4"
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="space-y-4"
+          >
+            <h2
+              className="text-4xl lg:text-[44px] font-bold leading-[1.18] tracking-tight text-white"
+              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.4)" }}
+            >
+              <span
+                className="inline-block relative"
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontStyle: "italic",
+                  fontSize: "1.15em",
+                  fontWeight: 600,
+                  color: "#ffa726",
+                  textShadow:
+                    "0 2px 24px rgba(255, 140, 0, 0.5), 0 0 32px rgba(255, 140, 0, 0.25)",
+                }}
+              >
+                Your
+                <svg
+                  className="absolute -bottom-1 left-0 w-full h-2"
+                  viewBox="0 0 100 8"
+                  preserveAspectRatio="none"
+                >
+                  <motion.path
+                    d="M0,7 Q25,0 50,5 T100,4"
+                    stroke="#ff8c00"
+                    strokeWidth="1.75"
+                    fill="none"
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.8 }}
+                    transition={{ duration: 1.1, delay: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                  />
+                </svg>
+              </span>{" "}
+              Work-Related
+              <br />
+              Learning Journey,
+              <br />
+              <motion.span 
+                initial={{ opacity: 0, filter: "blur(4px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+                className="text-[#ff8c00] inline-block"
+                style={{ textShadow: "0 2px 28px rgba(255, 140, 0, 0.6), 0 0 16px rgba(255, 140, 0, 0.3)" }}
+              >
+                Simplified.
+              </motion.span>
+            </h2>
+            <p className="text-base text-white/90 max-w-md leading-relaxed font-normal">
+              Manage placements, submit logbooks, and stay connected with your supervisors and
+              lecturers — all in one platform.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="grid grid-cols-2 gap-4"
           >
             {features.map((f, idx) => (
               <motion.div
                 key={f.title}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.5 + idx * 0.08 }}
-                className="flex items-start gap-3 p-3.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] backdrop-blur-md border border-white/10 hover:border-amber-400/40 transition-all duration-300 group cursor-default shadow-sm hover:shadow-md"
+                transition={{ duration: 0.4, delay: 0.5 + idx * 0.1 }}
+                className="flex items-start gap-3 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/8 hover:border-white/20 transition-all cursor-default"
               >
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-white/15 to-white/5 border border-white/20 flex items-center justify-center shrink-0 group-hover:scale-105 group-hover:border-[#ff8c00]/50 transition-all duration-300 shadow-sm">
-                  <f.icon className="w-4 h-4 text-[#ff8c00]" />
+                <div className="w-9 h-9 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center shrink-0 border border-white/20">
+                  <f.icon className="w-4 h-4 text-white/90" />
                 </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-1 mb-0.5">
-                    <h3 className="font-semibold text-xs text-white/95 group-hover:text-white transition-colors truncate">
-                      {f.title}
-                    </h3>
-                    <span className="text-[9px] font-mono text-[#ffa726] bg-[#ff8c00]/15 px-1.5 py-0.2 rounded font-medium shrink-0">
-                      {f.tag}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-white/65 leading-snug line-clamp-2">{f.desc}</p>
+                <div>
+                  <h3 className="font-semibold text-xs mb-1 text-white/95">{f.title}</h3>
+                  <p className="text-[11px] text-white/60 leading-snug">{f.desc}</p>
                 </div>
               </motion.div>
             ))}
