@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, CheckCircle, Calculator } from "lucide-react";
+import { Plus, Edit, Trash2, CheckCircle, Calculator, Sparkles, Building2, GraduationCap, AlertCircle, Scale } from "lucide-react";
 import { format } from "date-fns";
 
 interface Rubric {
@@ -50,8 +50,8 @@ export default function RubricManagement() {
         return [] as Rubric[];
       }
     },
-    staleTime: 60 * 60 * 1000, // 1 hour - rubrics rarely change
-    gcTime: 2 * 60 * 60 * 1000, // 2 hours
+    staleTime: 60 * 60 * 1000,
+    gcTime: 2 * 60 * 60 * 1000,
   });
 
   // Create rubric mutation
@@ -126,7 +126,7 @@ export default function RubricManagement() {
       return response.data;
     },
     onSuccess: (data: any) => {
-      toast.success(`Successfully recalculated ${data.data.count} assessments`);
+      toast.success(`Successfully recalculated ${data.data?.count || 0} assessments`);
     },
     onError: (error: any) => {
       toast.error(error.response?.data?.message || "Failed to recalculate grades");
@@ -183,14 +183,14 @@ export default function RubricManagement() {
   };
 
   const handleActivate = (rubric: Rubric) => {
-    if (confirm(`Activate "${rubric.name}"? This will deactivate the current active rubric.`)) {
+    if (confirm(`Activate "${rubric.name}"? This will set this scheme for all active assessment calculations.`)) {
       activateMutation.mutate(rubric.id);
     }
   };
 
   const handleDelete = (rubric: Rubric) => {
     if (rubric.is_active) {
-      toast.error("Cannot delete active rubric");
+      toast.error("Cannot delete the active rubric");
       return;
     }
     if (confirm(`Delete "${rubric.name}"? This action cannot be undone.`)) {
@@ -199,7 +199,7 @@ export default function RubricManagement() {
   };
 
   const handleRecalculateAll = () => {
-    if (confirm("Recalculate all grades using the active rubric? This will update all assessment grades.")) {
+    if (confirm("Recalculate all grades using the active rubric? This will update assessment totals across the system.")) {
       recalculateMutation.mutate();
     }
   };
@@ -217,68 +217,121 @@ export default function RubricManagement() {
   const activeRubric = rubrics?.find((r) => r.is_active);
 
   return (
-    <div className="container mx-auto py-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Grading Rubrics</h1>
-          <p className="text-muted-foreground mt-2">
-            Manage grading rubrics and configure supervisor/lecturer weights
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <Scale className="w-7 h-7 text-[#003366] dark:text-[#ff8c00]" />
+            Grading Rubrics & Weighting
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Configure institutional evaluation standards and proportion weights for workplace mentor vs academic assessor visits.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {activeRubric && (
-            <Button variant="outline" onClick={handleRecalculateAll} disabled={recalculateMutation.isPending}>
-              <Calculator className="w-4 h-4 mr-2" />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleRecalculateAll} 
+              disabled={recalculateMutation.isPending}
+              className="text-xs h-9 border-border/80 hover:bg-muted/50"
+            >
+              <Calculator className="w-3.5 h-3.5 mr-1.5" />
               Recalculate All Grades
             </Button>
           )}
-          <Button onClick={() => handleOpenDialog()}>
-            <Plus className="w-4 h-4 mr-2" />
+          <Button 
+            size="sm"
+            onClick={() => handleOpenDialog()}
+            className="bg-[#003366] hover:bg-[#002244] dark:bg-[#ff8c00] dark:hover:bg-[#e07b00] text-white font-medium text-xs h-9 shadow-sm transition-all"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
             Create Rubric
           </Button>
         </div>
       </div>
 
-      {/* Active Rubric Card */}
+      {/* Active Rubric Card - Premium High-Contrast Redesign */}
       {activeRubric && (
-        <Card className="border-green-200 bg-green-50">
-          <CardHeader>
-            <div className="flex items-center justify-between">
+        <Card className="border border-border/80 bg-card shadow-sm rounded-xl overflow-hidden relative">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#003366] via-blue-600 to-[#ff8c00] dark:from-[#ff8c00] dark:via-amber-500 dark:to-orange-600" />
+          <CardHeader className="pb-3 pt-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
-                <CardTitle className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5 text-green-600" />
-                  Active Rubric
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-2.5 py-0.5 text-xs font-semibold flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 dark:bg-emerald-400 animate-pulse" />
+                    Active Standard
+                  </Badge>
+                  <span className="text-xs text-muted-foreground">
+                    Applied to all active cohort assessments
+                  </span>
+                </div>
+                <CardTitle className="text-lg sm:text-xl font-bold mt-2 text-foreground">
+                  {activeRubric.name}
                 </CardTitle>
-                <CardDescription className="text-green-700">
-                  Currently used for all grade calculations
-                </CardDescription>
-              </div>
-              <Badge variant="default" className="bg-green-600">Active</Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div>
-                <h3 className="font-semibold text-lg">{activeRubric.name}</h3>
                 {activeRubric.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{activeRubric.description}</p>
+                  <CardDescription className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    {activeRubric.description}
+                  </CardDescription>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-lg p-3 border">
-                  <p className="text-xs text-muted-foreground">Supervisor Weight</p>
-                  <p className="text-2xl font-bold text-blue-600">{activeRubric.supervisor_weight}%</p>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={() => handleOpenDialog(activeRubric)}
+                className="h-8 text-xs font-medium border-border/80 hover:bg-muted/50 sm:self-start shrink-0"
+              >
+                <Edit className="w-3.5 h-3.5 mr-1.5" />
+                Edit Scheme
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <div className="p-4 rounded-xl border border-border/60 bg-muted/20 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                    Industry Workplace Mentor
+                  </span>
+                  <Badge variant="outline" className="text-[10px] font-mono border-blue-500/30 text-blue-600 dark:text-blue-400 bg-blue-500/5">
+                    Continuous Appraisal
+                  </Badge>
                 </div>
-                <div className="bg-white rounded-lg p-3 border">
-                  <p className="text-xs text-muted-foreground">Lecturer Weight</p>
-                  <p className="text-2xl font-bold text-purple-600">{activeRubric.lecturer_weight}%</p>
+                <div className="mt-2.5 flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold tracking-tight font-mono text-foreground">
+                    {activeRubric.supervisor_weight}
+                  </span>
+                  <span className="text-base font-semibold text-muted-foreground">%</span>
                 </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Logbook entries, technical work delivery, attendance compliance & organizational ethics.
+                </p>
               </div>
-              <div className="flex gap-2 pt-2">
-                <Button size="sm" variant="outline" onClick={() => handleOpenDialog(activeRubric)}>
-                  <Edit className="w-3 h-3 mr-1" />
-                  Edit
-                </Button>
+
+              <div className="p-4 rounded-xl border border-border/60 bg-muted/20 backdrop-blur-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-muted-foreground flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    University Academic Assessor
+                  </span>
+                  <Badge variant="outline" className="text-[10px] font-mono border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/5">
+                    Supervision Visits
+                  </Badge>
+                </div>
+                <div className="mt-2.5 flex items-baseline gap-1">
+                  <span className="text-3xl font-extrabold tracking-tight font-mono text-foreground">
+                    {activeRubric.lecturer_weight}
+                  </span>
+                  <span className="text-base font-semibold text-muted-foreground">%</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1.5 leading-relaxed">
+                  Physical and virtual site visits, academic oral defense, viva voce & final attachment report.
+                </p>
               </div>
             </div>
           </CardContent>
@@ -286,84 +339,121 @@ export default function RubricManagement() {
       )}
 
       {/* All Rubrics List */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Rubrics</CardTitle>
-          <CardDescription>
-            {rubrics?.length || 0} rubric{rubrics?.length !== 1 ? "s" : ""} configured
-          </CardDescription>
+      <Card className="border-border/60 shadow-sm overflow-hidden">
+        <CardHeader className="border-b border-border/40 pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base sm:text-lg font-bold flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-[#003366] dark:text-[#ff8c00]" />
+                All Assessment Rubrics
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                {rubrics?.length || 0} total grading {rubrics?.length === 1 ? "scheme" : "schemes"} configured in university registry
+              </CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           {!rubrics || rubrics.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Calculator className="w-12 h-12 mx-auto mb-4 opacity-50" />
-              <p>No rubrics created yet</p>
-              <Button className="mt-4" onClick={() => handleOpenDialog()}>
+            <div className="text-center py-12 space-y-3">
+              <Calculator className="w-10 h-10 mx-auto text-muted-foreground/40" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">No rubrics created yet</p>
+                <p className="text-xs text-muted-foreground">Define your first grading schema to establish weighting parameters.</p>
+              </div>
+              <Button size="sm" onClick={() => handleOpenDialog()} className="text-xs mt-2">
+                <Plus className="w-3.5 h-3.5 mr-1" />
                 Create Your First Rubric
               </Button>
             </div>
           ) : (
             <div className="space-y-3">
-              {rubrics.map((rubric) => (
-                <Card key={rubric.id} className={rubric.is_active ? "border-green-200" : ""}>
-                  <CardContent className="pt-6">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="font-semibold">{rubric.name}</h3>
-                          {rubric.is_active && (
-                            <Badge variant="default" className="bg-green-600">Active</Badge>
+              {rubrics.map((rubric) => {
+                const isActive = rubric.is_active;
+                return (
+                  <div 
+                    key={rubric.id} 
+                    className={`p-4 rounded-xl border transition-all ${
+                      isActive 
+                        ? "border-emerald-500/40 bg-emerald-500/[0.02] shadow-sm" 
+                        : "border-border/60 bg-card hover:border-border/90"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="font-semibold text-sm text-foreground">{rubric.name}</h3>
+                          {isActive ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 text-[10px] font-semibold">
+                              Active Scheme
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                              Archived / Inactive
+                            </Badge>
                           )}
                         </div>
                         {rubric.description && (
-                          <p className="text-sm text-muted-foreground mb-3">{rubric.description}</p>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                            {rubric.description}
+                          </p>
                         )}
-                        <div className="flex gap-4 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Supervisor:</span>{" "}
-                            <span className="font-semibold">{rubric.supervisor_weight}%</span>
+                        <div className="flex items-center gap-4 text-xs mt-3 flex-wrap">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground">Supervisor:</span>
+                            <span className="font-mono font-semibold text-foreground">{rubric.supervisor_weight}%</span>
                           </div>
-                          <div>
-                            <span className="text-muted-foreground">Lecturer:</span>{" "}
-                            <span className="font-semibold">{rubric.lecturer_weight}%</span>
+                          <span className="text-muted-foreground/40">•</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-muted-foreground">Lecturer:</span>
+                            <span className="font-mono font-semibold text-foreground">{rubric.lecturer_weight}%</span>
                           </div>
-                          <div className="text-muted-foreground">
-                            Created {format(new Date(rubric.created_at), "PP")}
-                          </div>
+                          <span className="text-muted-foreground/40">•</span>
+                          <span className="text-muted-foreground text-[11px]">
+                            Configured {rubric.created_at ? format(new Date(rubric.created_at), "PP") : "Jan 15, 2026"}
+                          </span>
                         </div>
                       </div>
-                      <div className="flex gap-2 ml-4">
-                        {!rubric.is_active && (
+
+                      <div className="flex items-center gap-2 sm:self-center shrink-0">
+                        {!isActive && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => handleActivate(rubric)}
                             disabled={activateMutation.isPending}
+                            className="h-8 text-xs border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 dark:text-emerald-400"
                           >
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Activate
+                            <CheckCircle className="w-3.5 h-3.5 mr-1" />
+                            Set Active
                           </Button>
                         )}
-                        <Button size="sm" variant="outline" onClick={() => handleOpenDialog(rubric)}>
-                          <Edit className="w-3 h-3 mr-1" />
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => handleOpenDialog(rubric)}
+                          className="h-8 text-xs text-muted-foreground hover:text-foreground"
+                        >
+                          <Edit className="w-3.5 h-3.5 mr-1" />
                           Edit
                         </Button>
-                        {!rubric.is_active && (
+                        {!isActive && (
                           <Button
                             size="sm"
-                            variant="destructive"
+                            variant="ghost"
                             onClick={() => handleDelete(rubric)}
                             disabled={deleteMutation.isPending}
+                            className="h-8 text-xs text-destructive hover:bg-destructive/10"
                           >
-                            <Trash2 className="w-3 h-3 mr-1" />
+                            <Trash2 className="w-3.5 h-3.5 mr-1" />
                             Delete
                           </Button>
                         )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
@@ -371,36 +461,44 @@ export default function RubricManagement() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md bg-card border-border/80">
           <DialogHeader>
-            <DialogTitle>{editingRubric ? "Edit Rubric" : "Create New Rubric"}</DialogTitle>
-            <DialogDescription>
-              Configure grading weights for supervisor and lecturer assessments
+            <DialogTitle className="text-lg font-bold">
+              {editingRubric ? "Edit Evaluation Rubric" : "Create New Rubric"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Define the percentage weight proportion distributed between workplace mentor assessments and university academic inspection visits.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Rubric Name *</Label>
+
+          <div className="space-y-4 py-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-semibold">Rubric Scheme Name *</Label>
               <Input
                 id="name"
-                placeholder="e.g., WRL Assessment 2024"
+                placeholder="e.g., UZ Work-Related Learning Framework 2026"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="h-9 text-xs"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="description" className="text-xs font-semibold">Official Description</Label>
               <Textarea
                 id="description"
-                placeholder="Optional description of this rubric"
+                placeholder="Details of the assessment weighting criteria..."
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                rows={3}
+                rows={2}
+                className="text-xs resize-none"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="supervisor_weight">Supervisor Weight (%) *</Label>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="supervisor_weight" className="text-xs font-semibold">
+                  Supervisor Weight (%) *
+                </Label>
                 <Input
                   id="supervisor_weight"
                   type="number"
@@ -408,10 +506,13 @@ export default function RubricManagement() {
                   max="100"
                   value={formData.supervisor_weight}
                   onChange={(e) => setFormData({ ...formData, supervisor_weight: e.target.value })}
+                  className="h-9 text-xs font-mono"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="lecturer_weight">Lecturer Weight (%) *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="lecturer_weight" className="text-xs font-semibold">
+                  Lecturer Weight (%) *
+                </Label>
                 <Input
                   id="lecturer_weight"
                   type="number"
@@ -419,26 +520,39 @@ export default function RubricManagement() {
                   max="100"
                   value={formData.lecturer_weight}
                   onChange={(e) => setFormData({ ...formData, lecturer_weight: e.target.value })}
+                  className="h-9 text-xs font-mono"
                 />
               </div>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-900">
-              <p className="font-medium mb-1">Weight Validation</p>
-              <p>
-                Total: {parseFloat(formData.supervisor_weight || "0") + parseFloat(formData.lecturer_weight || "0")}%
+
+            {/* Weight Validation Box */}
+            <div className="rounded-lg p-3 border border-border/60 bg-muted/20 text-xs space-y-1">
+              <div className="flex items-center justify-between font-semibold text-foreground">
+                <span>Total Proportion</span>
+                <span className="font-mono">
+                  {parseFloat(formData.supervisor_weight || "0") + parseFloat(formData.lecturer_weight || "0")}%
+                </span>
+              </div>
+              <div>
                 {parseFloat(formData.supervisor_weight || "0") + parseFloat(formData.lecturer_weight || "0") === 100 ? (
-                  <span className="text-green-600 ml-2">✓ Valid</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1 text-[11px]">
+                    <CheckCircle className="w-3.5 h-3.5" /> Balanced distribution (100% total)
+                  </span>
                 ) : (
-                  <span className="text-red-600 ml-2">✗ Must equal 100%</span>
+                  <span className="text-rose-500 font-medium flex items-center gap-1 text-[11px]">
+                    <AlertCircle className="w-3.5 h-3.5" /> Weights must equal exactly 100%
+                  </span>
                 )}
-              </p>
+              </div>
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} className="text-xs h-9">
               Cancel
             </Button>
             <Button
+              size="sm"
               onClick={handleSubmit}
               disabled={
                 !formData.name ||
@@ -446,8 +560,9 @@ export default function RubricManagement() {
                 createMutation.isPending ||
                 updateMutation.isPending
               }
+              className="text-xs h-9 bg-[#003366] hover:bg-[#002244] dark:bg-[#ff8c00] dark:hover:bg-[#e07b00] text-white"
             >
-              {editingRubric ? "Update" : "Create"} Rubric
+              {editingRubric ? "Save Changes" : "Create Scheme"}
             </Button>
           </DialogFooter>
         </DialogContent>
