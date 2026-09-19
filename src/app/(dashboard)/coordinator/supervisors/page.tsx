@@ -42,11 +42,17 @@ export default function PendingSupervisors() {
   const [rejectionReason, setRejectionReason] = useState("");
 
   // Fetch pending supervisors
-  const { data: supervisors, isLoading } = useQuery({
+  const { data: supervisors = [], isLoading } = useQuery({
     queryKey: ["supervisors", "pending"],
     queryFn: async () => {
-      const response = await api.get("/supervisors/pending");
-      return response.data.data as PendingSupervisor[];
+      try {
+        const response = await api.get("/supervisors/pending");
+        const list = response?.data?.data ?? response?.data ?? [];
+        return Array.isArray(list) ? (list as PendingSupervisor[]) : [];
+      } catch (err) {
+        console.error("Failed to fetch pending supervisors:", err);
+        return [] as PendingSupervisor[];
+      }
     },
   });
 

@@ -38,11 +38,17 @@ export default function RubricManagement() {
   });
 
   // Fetch rubrics
-  const { data: rubrics, isLoading } = useQuery({
+  const { data: rubrics = [], isLoading } = useQuery({
     queryKey: ["rubrics"],
     queryFn: async () => {
-      const response = await api.get("/rubrics");
-      return response.data.data as Rubric[];
+      try {
+        const response = await api.get("/rubrics");
+        const list = response?.data?.data ?? response?.data ?? [];
+        return Array.isArray(list) ? (list as Rubric[]) : [];
+      } catch (err) {
+        console.error("Failed to fetch rubrics:", err);
+        return [] as Rubric[];
+      }
     },
     staleTime: 60 * 60 * 1000, // 1 hour - rubrics rarely change
     gcTime: 2 * 60 * 60 * 1000, // 2 hours
