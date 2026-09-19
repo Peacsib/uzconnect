@@ -102,7 +102,36 @@ export async function GET() {
       };
     });
 
-    // 3. Fetch latest placement submissions
+    // 3. Fetch all registered lecturers for manual assignment
+    const lecturersList = await prisma.lecturer.findMany({
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        department: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+
+    const formattedLecturers = lecturersList.map((l) => ({
+      id: l.id,
+      name: l.user.name,
+      email: l.user.email,
+      department: l.department.name,
+    }));
+
+    // 4. Fetch active placements for monitoring and manual lecturer assignment
+    const activePlacementsList = await prisma.placement.findMany({
+      where: { status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+      include: {
+        student: { include: { user: true, programme: true } },
+        company: true,
+        supervisor: { include: { user: true } },
+        lecturer: { include: { user: true } },
+      },
+      take: 20,
+    });
+
+    // 5. Fetch latest placement submissions
     const pendingSubmissions = await prisma.placementSubmission.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "desc" },
@@ -130,6 +159,8 @@ export async function GET() {
       },
       students: formattedStudents,
       pendingSubmissions,
+      lecturers: formattedLecturers,
+      activePlacements: activePlacementsList,
       coordinator: {
         name: "Jameson Sibanda",
         email: "peacesibx@gmail.com",

@@ -349,7 +349,7 @@ export default function SupervisorOverviewPage() {
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground space-y-2">
             <p>
-              Direct communication link to Academic Supervisor Panashe S and Central Coordinator Jameson Sibanda for site visit scheduling.
+              Direct communication link to the assigned Academic Lecturer and Central Coordinator Jameson Sibanda for site visit scheduling.
             </p>
           </CardContent>
         </Card>

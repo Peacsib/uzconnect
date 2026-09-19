@@ -12,12 +12,12 @@ import {
 } from "@/utils/mockData"
 import { toast } from "sonner"
 
-let memoryPlacements = [...initialPlacements]
+let memoryPlacements: any[] = []
 let memorySubmissions = [...initialSubmissions]
 let memoryAssessments = [...initialAssessments]
 let memoryLogbook = [...initialLogbook]
 let memoryMessages = [...initialMessages]
-let memoryPlacementSubs = [...initialPlacementSubs]
+let memoryPlacementSubs: any[] = []
 let memoryStudents = [...initialStudents]
 
 export function usePlacements() {
@@ -279,14 +279,47 @@ export function useCreatePlacementSubmission() {
 
 export function useAssignPlacement() {
   return {
-    mutate: (data: any) => {
-      toast.success("Placement assigned successfully")
+    mutate: async (data: any) => {
+      try {
+        const res = await fetch("/api/coordinator/placements/assign", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            submissionId: data.submission_id || data.student_id,
+            placementId: data.placement_id,
+            lecturerId: data.lecturer_id,
+          }),
+        });
+        const json = await res.json();
+        if (res.ok && json.success) {
+          toast.success(json.message || "Placement assigned successfully");
+        } else {
+          toast.error(json.error || "Failed to assign lecturer");
+        }
+      } catch {
+        toast.error("Network error while assigning placement");
+      }
     },
     mutateAsync: async (data: any) => {
-      toast.success("Placement assigned successfully")
+      const res = await fetch("/api/coordinator/placements/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          submissionId: data.submission_id || data.student_id,
+          placementId: data.placement_id,
+          lecturerId: data.lecturer_id,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        toast.error(json.error || "Failed to assign lecturer");
+        throw new Error(json.error || "Failed to assign lecturer");
+      }
+      toast.success(json.message || "Placement assigned successfully");
+      return json;
     },
     isPending: false,
-  }
+  };
 }
 
 export function useConfirmPlacement() {

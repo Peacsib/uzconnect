@@ -70,21 +70,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // 3. Resolve Academic Lecturer: Panashe S or explicit lecturer
-    let resolvedLecturerId = explicitLecturerId;
-    if (!resolvedLecturerId) {
-      const panashe = await prisma.lecturer.findFirst({
-        where: { user: { email: "panashes@uofzmail.az.uz.zw" } },
-      });
-      if (panashe) {
-        resolvedLecturerId = panashe.id;
-      } else {
-        const anyLec = await prisma.lecturer.findFirst({
-          where: { departmentId: sub.student.programme.departmentId },
-        });
-        resolvedLecturerId = anyLec?.id || null;
-      }
-    }
+    // 3. Resolve Academic Lecturer: ONLY explicit lecturer if chosen by coordinator; NEVER auto-assign!
+    const resolvedLecturerId = (explicitLecturerId && explicitLecturerId !== "unassigned") ? String(explicitLecturerId) : null;
 
     // 4. Create active Placement
     const placement = await prisma.placement.create({
@@ -126,7 +113,7 @@ export async function POST(request: Request) {
       },
     });
 
-    if (placement.lecturer?.userId) {
+    if (resolvedLecturerId && placement.lecturer?.userId) {
       await prisma.notification.create({
         data: {
           userId: placement.lecturer.userId,

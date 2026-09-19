@@ -6,6 +6,7 @@ import { useCoordinatorOverview } from "@/hooks/useCoordinatorOverview";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { 
@@ -38,6 +39,7 @@ export default function CoordinatorDashboardPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [selectedLecturers, setSelectedLecturers] = useState<Record<string, string>>({});
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -47,13 +49,16 @@ export default function CoordinatorDashboardPage() {
     toast.success("Coordinator portal synchronized with database");
   };
 
-  const handleApprovePlacement = async (submissionId: string, studentName: string) => {
+  const handleApprovePlacement = async (submissionId: string, studentName: string, lecturerId?: string) => {
     try {
       setApprovingId(submissionId);
       const res = await fetch("/api/coordinator/placements/approve", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ submissionId }),
+        body: JSON.stringify({ 
+          submissionId,
+          lecturerId: (lecturerId && lecturerId !== "unassigned") ? lecturerId : null,
+        }),
       });
       const json = await res.json();
       if (res.ok && json.success) {
@@ -66,6 +71,26 @@ export default function CoordinatorDashboardPage() {
       toast.error(err.message || "Network error while approving placement");
     } finally {
       setApprovingId(null);
+    }
+  };
+
+  const handleAssignLecturer = async (placementId: string, lecturerId: string) => {
+    if (!lecturerId || lecturerId === "unassigned") return;
+    try {
+      const res = await fetch("/api/coordinator/placements/assign", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ placementId, lecturerId }),
+      });
+      const json = await res.json();
+      if (res.ok && json.success) {
+        toast.success(json.message || "Lecturer assigned successfully!");
+        await refetch();
+      } else {
+        toast.error(json.error || "Failed to assign lecturer");
+      }
+    } catch {
+      toast.error("Network error assigning lecturer");
     }
   };
 
@@ -353,12 +378,33 @@ export default function CoordinatorDashboardPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-end gap-2 pt-1">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-2 border-t border-border/40">
+                    <div className="flex-1 min-w-[200px]">
+                      <label className="text-[11px] font-semibold text-muted-foreground block mb-1">
+                        Academic Lecturer Assignment
+                      </label>
+                      <Select
+                        value={selectedLecturers[sub.id] || "unassigned"}
+                        onValueChange={(val) => setSelectedLecturers((prev) => ({ ...prev, [sub.id]: val }))}
+                      >
+                        <SelectTrigger className="h-8 text-xs bg-background">
+                          <SelectValue placeholder="Select Lecturer (or Assign Later)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">-- No Lecturer (Assign Later) --</SelectItem>
+                          {data?.lecturers?.map((lec: any) => (
+                            <SelectItem key={lec.id} value={lec.id}>
+                              {lec.name} ({lec.email})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <Button 
                       size="sm" 
-                      onClick={() => handleApprovePlacement(sub.id, sub.student?.user?.name || "Student")}
+                      onClick={() => handleApprovePlacement(sub.id, sub.student?.user?.name || "Student", selectedLecturers[sub.id])}
                       disabled={approvingId === sub.id}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs shadow-sm transition-all sm:self-end h-8 shrink-0"
                     >
                       {approvingId === sub.id ? (
                         <>
