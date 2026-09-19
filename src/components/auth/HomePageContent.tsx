@@ -24,7 +24,6 @@ import {
   Wifi,
   Lock,
   ArrowRight,
-  Sparkles,
 } from "lucide-react";
 
 // Static assets
@@ -64,8 +63,9 @@ export default function HomePage() {
   const emailParam = searchParams.get("email");
   const initialEmail = emailParam || (registeredParam && registeredParam !== "true" ? registeredParam : "");
 
-  // If redirected from registration, start at register face (-90deg) and animate to signin (0deg)
+  // If redirected from registration, start at register face and animate to signin
   const [tab, setTab] = useState<"signin" | "register">(isFromReg ? "register" : "signin");
+  const [isAnimating, setIsAnimating] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const toastFiredRef = useRef(false);
 
@@ -83,6 +83,15 @@ export default function HomePage() {
     window.addEventListener("resize", updateDepth);
     return () => window.removeEventListener("resize", updateDepth);
   }, []);
+
+  const handleTabChange = (newTab: "signin" | "register") => {
+    if (newTab === tab) return;
+    setIsAnimating(true);
+    setTab(newTab);
+    setTimeout(() => {
+      setIsAnimating(false);
+    }, 720);
+  };
 
   const {
     register,
@@ -109,11 +118,10 @@ export default function HomePage() {
         });
       }
 
-      // If came from registration, smoothly turn the cube to the signin face after short pause
       if (isFromReg) {
         const turnTimer = setTimeout(() => {
-          setTab("signin");
-        }, 150);
+          handleTabChange("signin");
+        }, 200);
         return () => clearTimeout(turnTimer);
       }
     }
@@ -253,7 +261,7 @@ export default function HomePage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-xs mb-0.5 text-white/95">{f.title}</h3>
-                  <p className="text-[10px] text-white/60 leading-snug">{f.desc}</p>
+                  <p className="text-[11px] text-white/60 leading-snug">{f.desc}</p>
                 </div>
               </motion.div>
             ))}
@@ -401,7 +409,7 @@ export default function HomePage() {
             perspectiveOrigin: "50% 50%",
           }}
         >
-          {/* 3D Rotating Cube Container */}
+          {/* 3D Rotating Cube Container - Exactly as praised! */}
           <motion.div
             animate={{
               rotateY: tab === "signin" ? 0 : -90,
@@ -429,7 +437,9 @@ export default function HomePage() {
                 transform: `rotateY(0deg) translateZ(${cubeDepth}px)`,
                 transformStyle: "preserve-3d",
                 backfaceVisibility: "hidden",
-                pointerEvents: tab === "signin" ? "auto" : "none",
+                zIndex: tab === "signin" ? 20 : 1,
+                pointerEvents: tab === "signin" && !isAnimating ? "auto" : "none",
+                visibility: tab === "signin" || isAnimating ? "visible" : "hidden",
               }}
               className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 flex flex-col justify-between"
             >
@@ -437,35 +447,35 @@ export default function HomePage() {
               <motion.div
                 animate={{ opacity: tab === "signin" ? 0 : 0.6 }}
                 transition={{ duration: 0.7, ease: "easeInOut" }}
-                className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
+                className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-10"
               />
 
               {/* Accent bar */}
-              <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726] shrink-0" />
+              <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#ffa726] shrink-0 relative z-20" />
 
-              {/* Header */}
-              <div className="px-8 pt-5 pb-2 text-center border-b border-gray-100 shrink-0">
-                <div className="inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br from-[#003366] to-[#002147] mb-2 shadow-lg">
+              {/* Header with official UZ Crest */}
+              <div className="px-8 pt-5 pb-2 text-center border-b border-gray-100 shrink-0 relative z-20">
+                <div className="inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br from-[#003366] to-[#002147] mb-2 shadow-lg border border-white/20">
                   <img src={UZ_CREST} alt="UZ Crest" className="w-8 h-8" />
                 </div>
                 <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">WRL Connect</h1>
                 <p className="text-[11px] text-gray-500 font-medium">Work-Related Learning Platform</p>
               </div>
 
-              {/* 3D Tabs */}
-              <div className="px-6 lg:px-8 pt-3 shrink-0">
+              {/* Tabs */}
+              <div className="px-6 lg:px-8 pt-3 shrink-0 relative z-20">
                 <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
                   <button
                     type="button"
-                    onClick={() => setTab("signin")}
-                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
+                    onClick={() => handleTabChange("signin")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm cursor-pointer"
                   >
                     SIGN IN
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTab("register")}
-                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
+                    onClick={() => handleTabChange("register")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700 cursor-pointer"
                   >
                     REGISTER
                   </button>
@@ -473,7 +483,7 @@ export default function HomePage() {
               </div>
 
               {/* Form Content */}
-              <div className="px-6 lg:px-8 py-4 flex-1 flex flex-col justify-center">
+              <div className="px-6 lg:px-8 py-4 flex-1 flex flex-col justify-center relative z-20">
                 <form onSubmit={handleSubmit(onLogin)} className="space-y-3">
                   <div>
                     <Label className="text-gray-700 text-xs font-bold uppercase tracking-wide mb-1 block">
@@ -507,7 +517,7 @@ export default function HomePage() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors cursor-pointer"
                       >
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
@@ -529,7 +539,7 @@ export default function HomePage() {
                   <Button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full h-10 bg-gradient-to-r from-[#003366] to-[#002147] text-white hover:from-[#002147] hover:to-[#001a33] font-bold text-sm tracking-wide rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                    className="w-full h-10 bg-gradient-to-r from-[#003366] to-[#002147] text-white hover:from-[#002147] hover:to-[#001a33] font-bold text-sm tracking-wide rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer"
                   >
                     {isLoading ? (
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -560,7 +570,9 @@ export default function HomePage() {
                 transform: `rotateY(90deg) translateZ(${cubeDepth}px)`,
                 transformStyle: "preserve-3d",
                 backfaceVisibility: "hidden",
-                pointerEvents: tab === "register" ? "auto" : "none",
+                zIndex: tab === "register" ? 20 : 1,
+                pointerEvents: tab === "register" && !isAnimating ? "auto" : "none",
+                visibility: tab === "register" || isAnimating ? "visible" : "hidden",
               }}
               className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 flex flex-col justify-between"
             >
@@ -568,35 +580,35 @@ export default function HomePage() {
               <motion.div
                 animate={{ opacity: tab === "register" ? 0 : 0.6 }}
                 transition={{ duration: 0.7, ease: "easeInOut" }}
-                className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-40"
+                className="absolute inset-0 bg-black pointer-events-none rounded-2xl z-10"
               />
 
               {/* Accent bar */}
-              <div className="h-1.5 bg-gradient-to-r from-[#ff8c00] via-[#ffa726] to-[#003366] shrink-0" />
+              <div className="h-1.5 bg-gradient-to-r from-[#ff8c00] via-[#ffa726] to-[#003366] shrink-0 relative z-20" />
 
-              {/* Header */}
-              <div className="px-8 pt-5 pb-2 text-center border-b border-gray-100 shrink-0">
-                <div className="inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br from-[#ff8c00] to-[#e65100] mb-2 shadow-lg">
-                  <Sparkles className="w-7 h-7 text-white" />
+              {/* Header with official University of Zimbabwe Crest */}
+              <div className="px-8 pt-5 pb-2 text-center border-b border-gray-100 shrink-0 relative z-20">
+                <div className="inline-flex items-center justify-center w-13 h-13 rounded-2xl bg-gradient-to-br from-[#003366] to-[#002147] mb-2 shadow-lg border border-white/20">
+                  <img src={UZ_CREST} alt="UZ Crest" className="w-8 h-8" />
                 </div>
                 <h1 className="text-lg font-bold text-gray-900 tracking-tight mb-0.5">Create Account</h1>
                 <p className="text-[11px] text-gray-500 font-medium">Select your portal role to register</p>
               </div>
 
-              {/* 3D Tabs */}
-              <div className="px-6 lg:px-8 pt-3 shrink-0">
+              {/* Tabs */}
+              <div className="px-6 lg:px-8 pt-3 shrink-0 relative z-20">
                 <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200">
                   <button
                     type="button"
-                    onClick={() => setTab("signin")}
-                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700"
+                    onClick={() => handleTabChange("signin")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 text-gray-500 hover:text-gray-700 hover:bg-gray-200/50 cursor-pointer"
                   >
                     SIGN IN
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTab("register")}
-                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm"
+                    onClick={() => handleTabChange("register")}
+                    className="flex-1 py-1.5 text-xs font-bold rounded-lg transition-all duration-200 bg-white text-gray-900 shadow-sm cursor-pointer"
                   >
                     REGISTER
                   </button>
@@ -604,11 +616,12 @@ export default function HomePage() {
               </div>
 
               {/* Options */}
-              <div className="px-6 lg:px-8 py-3.5 flex-1 flex flex-col justify-center space-y-2.5">
-                <Link href="/register/student" className="block">
+              <div className="px-6 lg:px-8 py-3.5 flex-1 flex flex-col justify-center space-y-2.5 relative z-20">
+                <Link href="/register/student" className="block cursor-pointer">
                   <Button
+                    type="button"
                     variant="outline"
-                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group cursor-pointer"
                   >
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
                       <GraduationCap className="w-5 h-5 text-white" />
@@ -625,10 +638,11 @@ export default function HomePage() {
                   </Button>
                 </Link>
 
-                <Link href="/register/supervisor" className="block">
+                <Link href="/register/supervisor" className="block cursor-pointer">
                   <Button
+                    type="button"
                     variant="outline"
-                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group cursor-pointer"
                   >
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
                       <Building2 className="w-5 h-5 text-white" />
@@ -640,10 +654,11 @@ export default function HomePage() {
                   </Button>
                 </Link>
 
-                <Link href="/register/lecturer" className="block">
+                <Link href="/register/lecturer" className="block cursor-pointer">
                   <Button
+                    type="button"
                     variant="outline"
-                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group"
+                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group cursor-pointer"
                   >
                     <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
                       <BookOpen className="w-5 h-5 text-white" />
@@ -658,8 +673,8 @@ export default function HomePage() {
                 <div className="pt-1 text-center">
                   <button
                     type="button"
-                    onClick={() => setTab("signin")}
-                    className="text-xs text-[#003366] font-semibold hover:underline inline-flex items-center gap-1"
+                    onClick={() => handleTabChange("signin")}
+                    className="text-xs text-[#003366] font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer p-1"
                   >
                     Already have an account? Sign in here
                     <ArrowRight className="w-3.5 h-3.5" />
