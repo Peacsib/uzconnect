@@ -409,16 +409,8 @@ export default function HomePage() {
             perspectiveOrigin: "50% 50%",
           }}
         >
-          {/* 3D Rotating Cube Container - Exactly as praised! */}
-          <motion.div
-            animate={{
-              rotateY: tab === "signin" ? 0 : -90,
-              translateZ: -cubeDepth,
-            }}
-            transition={{
-              duration: 0.7,
-              ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
-            }}
+          {/* 3D Rotating Cube Container - Dual Synchronized Orthogonal Faces */}
+          <div
             style={{
               transformStyle: "preserve-3d",
               position: "relative",
@@ -426,19 +418,28 @@ export default function HomePage() {
               height: "530px",
             }}
           >
-            {/* FACE 1: SIGN IN (Front Face at 0deg) */}
-            <div
+            {/* FACE 1: SIGN IN (Front Face: rotates 0deg <-> -90deg) */}
+            <motion.div
+              animate={{
+                rotateY: tab === "signin" ? 0 : -90,
+              }}
+              transition={{
+                duration: 0.7,
+                ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+              }}
+              onAnimationComplete={() => setIsAnimating(false)}
               style={{
                 position: "absolute",
                 top: 0,
                 left: 0,
                 width: "100%",
                 height: "100%",
-                transform: `rotateY(0deg) translateZ(${cubeDepth}px)`,
+                transformOrigin: `50% 50% -${cubeDepth}px`,
                 transformStyle: "preserve-3d",
                 backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
                 zIndex: tab === "signin" ? 20 : 1,
-                pointerEvents: tab === "signin" && !isAnimating ? "auto" : "none",
+                pointerEvents: tab === "signin" ? "auto" : "none",
                 visibility: tab === "signin" || isAnimating ? "visible" : "hidden",
               }}
               className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 flex flex-col justify-between"
@@ -557,21 +558,30 @@ export default function HomePage() {
                   </div>
                 </form>
               </div>
-            </div>
+            </motion.div>
 
-            {/* FACE 2: REGISTER (Right Face at +90deg) */}
-            <div
+            {/* FACE 2: REGISTER (Right Face: rotates 90deg <-> 0deg) */}
+            <motion.div
+              animate={{
+                rotateY: tab === "register" ? 0 : 90,
+              }}
+              transition={{
+                duration: 0.7,
+                ease: [0.32, 0.72, 0, 1] as [number, number, number, number],
+              }}
+              onAnimationComplete={() => setIsAnimating(false)}
               style={{
                 position: "absolute",
                 top: 0,
                 left: 0,
                 width: "100%",
                 height: "100%",
-                transform: `rotateY(90deg) translateZ(${cubeDepth}px)`,
+                transformOrigin: `50% 50% -${cubeDepth}px`,
                 transformStyle: "preserve-3d",
                 backfaceVisibility: "hidden",
+                WebkitBackfaceVisibility: "hidden",
                 zIndex: tab === "register" ? 20 : 1,
-                pointerEvents: tab === "register" && !isAnimating ? "auto" : "none",
+                pointerEvents: tab === "register" ? "auto" : "none",
                 visibility: tab === "register" || isAnimating ? "visible" : "hidden",
               }}
               className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl overflow-hidden border border-white/20 flex flex-col justify-between"
@@ -617,57 +627,48 @@ export default function HomePage() {
 
               {/* Options */}
               <div className="px-6 lg:px-8 py-3.5 flex-1 flex flex-col justify-center space-y-2.5 relative z-20">
-                <Link href="/register/student" className="block cursor-pointer">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#003366] hover:bg-[#003366]/5 transition-all border-2 border-gray-200 rounded-xl group cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                      <GraduationCap className="w-5 h-5 text-white" />
+                <Link
+                  href="/register/student"
+                  className="w-full py-2.5 px-3.5 flex items-center justify-start gap-3 border-2 border-gray-200 rounded-xl hover:border-[#003366] hover:bg-[#003366]/5 transition-all group cursor-pointer bg-white"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#003366] to-[#002147] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                    <GraduationCap className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
+                      Register as Student
+                      <span className="text-[9px] bg-blue-100 text-[#003366] px-1.5 py-0.5 rounded font-semibold">
+                        Self-Service
+                      </span>
                     </div>
-                    <div className="text-left">
-                      <div className="font-bold text-gray-900 text-xs flex items-center gap-1.5">
-                        Register as Student
-                        <span className="text-[9px] bg-blue-100 text-[#003366] px-1.5 py-0.5 rounded font-semibold">
-                          Self-Service
-                        </span>
-                      </div>
-                      <div className="text-[10px] text-gray-500">For UZ students preparing for attachment</div>
-                    </div>
-                  </Button>
+                    <div className="text-[10px] text-gray-500">For UZ students preparing for attachment</div>
+                  </div>
                 </Link>
 
-                <Link href="/register/supervisor" className="block cursor-pointer">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all border-2 border-gray-200 rounded-xl group cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                      <Building2 className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-bold text-gray-900 text-xs">Register as Supervisor</div>
-                      <div className="text-[10px] text-gray-500">Industry company mentors supervising interns</div>
-                    </div>
-                  </Button>
+                <Link
+                  href="/register/supervisor"
+                  className="w-full py-2.5 px-3.5 flex items-center justify-start gap-3 border-2 border-gray-200 rounded-xl hover:border-[#ff8c00] hover:bg-[#ff8c00]/5 transition-all group cursor-pointer bg-white"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#ff8c00] to-[#ffa726] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                    <Building2 className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="font-bold text-gray-900 text-xs">Register as Supervisor</div>
+                    <div className="text-[10px] text-gray-500">Industry company mentors supervising interns</div>
+                  </div>
                 </Link>
 
-                <Link href="/register/lecturer" className="block cursor-pointer">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full h-auto py-2.5 justify-start gap-3 hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all border-2 border-gray-200 rounded-xl group cursor-pointer"
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
-                      <BookOpen className="w-5 h-5 text-white" />
-                    </div>
-                    <div className="text-left">
-                      <div className="font-bold text-gray-900 text-xs">Register as Lecturer</div>
-                      <div className="text-[10px] text-gray-500">University academic staff & placement assessors</div>
-                    </div>
-                  </Button>
+                <Link
+                  href="/register/lecturer"
+                  className="w-full py-2.5 px-3.5 flex items-center justify-start gap-3 border-2 border-gray-200 rounded-xl hover:border-[#1e3a8a] hover:bg-[#1e3a8a]/5 transition-all group cursor-pointer bg-white"
+                >
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#1e3a8a] to-[#2563eb] flex items-center justify-center shrink-0 shadow-md group-hover:shadow-lg transition-shadow">
+                    <BookOpen className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="font-bold text-gray-900 text-xs">Register as Lecturer</div>
+                    <div className="text-[10px] text-gray-500">University academic staff & placement assessors</div>
+                  </div>
                 </Link>
 
                 <div className="pt-1 text-center">
@@ -681,8 +682,8 @@ export default function HomePage() {
                   </button>
                 </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
 
           {/* Footer copyright */}
           <p className="text-center text-[11px] text-white/60 lg:text-gray-500 mt-5">
