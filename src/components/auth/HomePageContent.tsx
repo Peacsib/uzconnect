@@ -24,6 +24,11 @@ import {
   Wifi,
   Lock,
   ArrowRight,
+  Sparkles,
+  ShieldCheck,
+  Award,
+  TrendingUp,
+  Compass,
 } from "lucide-react";
 
 // Static assets
@@ -33,23 +38,39 @@ const BG_IMAGE = "/homepage-background.webp";
 const features = [
   {
     icon: BookOpen,
-    title: "Digital Logbook",
-    desc: "Track your placement progress daily",
+    title: "Digital WRL Logbook",
+    desc: "Daily work logs, supervisor sign-offs & milestone tracking",
+    badge: "Daily Logs",
+    accent: "from-blue-500/20 to-indigo-500/10",
+    border: "group-hover:border-blue-400/40",
+    iconBg: "bg-gradient-to-br from-blue-500 to-indigo-600",
   },
   {
     icon: Users,
-    title: "Connected",
-    desc: "Students, supervisors & lecturers in one place",
+    title: "Tri-Party Portal",
+    desc: "Direct coordination: Student, Workplace Mentor & UZ Lecturer",
+    badge: "Synchronized",
+    accent: "from-amber-500/20 to-orange-500/10",
+    border: "group-hover:border-amber-400/40",
+    iconBg: "bg-gradient-to-br from-amber-500 to-[#e65100]",
   },
   {
     icon: CheckCircle,
-    title: "Verified Assessments",
-    desc: "Transparent grading & feedback",
+    title: "Verified Grading",
+    desc: "Standardized 40% supervisor & 60% academic visit rubrics",
+    badge: "40/60 Scheme",
+    accent: "from-emerald-500/20 to-teal-500/10",
+    border: "group-hover:border-emerald-400/40",
+    iconBg: "bg-gradient-to-br from-emerald-500 to-teal-700",
   },
   {
     icon: Wifi,
-    title: "Offline Ready",
-    desc: "Works even without internet access",
+    title: "Offline Capability",
+    desc: "Complete daily entries offline with automatic cloud sync",
+    badge: "Auto-Sync",
+    accent: "from-purple-500/20 to-pink-500/10",
+    border: "group-hover:border-purple-400/40",
+    iconBg: "bg-gradient-to-br from-purple-500 to-indigo-700",
   },
 ];
 
@@ -169,122 +190,101 @@ export default function HomePage() {
     <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Mobile Hero Panel */}
       <div
-        className="lg:hidden min-h-screen relative overflow-hidden flex flex-col"
+        className="lg:hidden min-h-screen relative overflow-hidden flex flex-col justify-between"
         style={{
           backgroundImage: `url(${BG_IMAGE})`,
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/85 via-[#002147]/75 to-[#003d66]/80" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-black/20" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#001428]/95 via-[#002147]/90 to-[#003366]/85" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-amber-500/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/30" />
 
         <div className="relative z-10 flex flex-col justify-between p-6 text-white flex-1">
+          {/* Top Brand Pill */}
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -15 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="flex items-center gap-2.5 pt-4"
+            transition={{ duration: 0.5 }}
+            className="flex items-center justify-between pt-2"
           >
-            <img src={UZ_CREST} alt="UZ Crest" className="w-10 h-10 drop-shadow-lg" />
-            <div>
-              <h1 className="text-base font-semibold tracking-tight">WRL Connect</h1>
-              <p className="text-xs text-white/75">University of Zimbabwe</p>
+            <div className="flex items-center gap-3">
+              <div className="p-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
+                <img src={UZ_CREST} alt="UZ Crest" className="w-8 h-8 object-contain" />
+              </div>
+              <div>
+                <h1 className="text-sm font-bold tracking-tight text-white flex items-center gap-1.5">
+                  WRL Connect
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                </h1>
+                <p className="text-[10px] text-white/70 font-medium">University of Zimbabwe</p>
+              </div>
+            </div>
+            <div className="px-2.5 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-[10px] text-amber-300 font-semibold">
+              Education 5.0
             </div>
           </motion.div>
 
+          {/* Hero Copy */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="space-y-4 flex-1 flex flex-col justify-center"
+            className="my-auto py-8 space-y-4"
           >
-            <h2
-              className="text-3xl font-bold leading-tight tracking-tight"
-              style={{ textShadow: "0 2px 16px rgba(0,0,0,0.5)" }}
-            >
-              <span
-                className="inline-block relative"
-                style={{
-                  fontFamily: "'Playfair Display', serif",
-                  fontStyle: "italic",
-                  fontSize: "1.15em",
-                  fontWeight: 600,
-                  color: "#ffa726",
-                  textShadow:
-                    "0 2px 20px rgba(255, 140, 0, 0.4), 0 0 30px rgba(255, 140, 0, 0.2)",
-                }}
-              >
-                Your
-                <svg
-                  className="absolute -bottom-1 left-0 w-full h-2"
-                  viewBox="0 0 100 8"
-                  preserveAspectRatio="none"
-                >
-                  <path
-                    d="M0,7 Q25,0 50,5 T100,4"
-                    stroke="#ff8c00"
-                    strokeWidth="1.5"
-                    fill="none"
-                    opacity="0.6"
-                  />
-                </svg>
-              </span>{" "}
-              Work-Related
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/15 border border-amber-400/30 text-[11px] font-semibold text-amber-300">
+              <Sparkles className="w-3.5 h-3.5" />
+              Work-Related Learning Portal
+            </div>
+
+            <h2 className="text-3xl font-extrabold leading-tight tracking-tight text-white">
+              Shaping Careers.
               <br />
-              Learning Journey,
-              <br />
-              <span className="text-[#ff8c00]">Simplified.</span>
+              <span className="relative inline-block mt-0.5">
+                <span className="bg-gradient-to-r from-[#ffa726] via-[#ffb74d] to-[#ff9800] bg-clip-text text-transparent font-serif italic">
+                  Connecting
+                </span>
+                {" "}the Future.
+              </span>
             </h2>
-            <p className="text-sm text-white/90 max-w-md leading-relaxed font-normal">
-              Manage placements, submit logbooks, and stay connected with your supervisors and
-              lecturers — all in one platform.
+            <p className="text-xs text-white/80 leading-relaxed max-w-sm">
+              The unified digital platform coordinating UZ students, industry supervisors, and academic lecturers for seamless attachment oversight.
             </p>
+
+            {/* Mobile Feature Highlights */}
+            <div className="grid grid-cols-2 gap-2.5 pt-2">
+              {features.map((f) => (
+                <div
+                  key={f.title}
+                  className="p-2.5 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/10"
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${f.iconBg} shadow`}>
+                      <f.icon className="w-3 h-3 text-white" />
+                    </div>
+                    <span className="text-[10px] font-bold text-white truncate">{f.badge}</span>
+                  </div>
+                  <p className="text-[10px] text-white/70 line-clamp-2 leading-tight">{f.desc}</p>
+                </div>
+              ))}
+            </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-2 gap-3 pb-4"
-          >
-            {features.map((f, idx) => (
-              <motion.div
-                key={f.title}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.5 + idx * 0.1 }}
-                className="flex items-start gap-2 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
-              >
-                <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center shrink-0 border border-white/20">
-                  <f.icon className="w-4 h-4 text-white/90" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-xs mb-0.5 text-white/95">{f.title}</h3>
-                  <p className="text-[11px] text-white/60 leading-snug">{f.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-
+          {/* Swipe down indicator */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ duration: 0.6, delay: 0.8 }}
-            className="text-center pb-6"
+            transition={{ duration: 0.6, delay: 0.6 }}
+            className="text-center pb-2"
           >
-            <p className="text-xs text-white/70 mb-2">Swipe up to sign in</p>
+            <p className="text-[11px] text-white/70 font-medium mb-1">Scroll down to sign in</p>
             <motion.div
-              animate={{ y: [0, 8, 0] }}
+              animate={{ y: [0, 6, 0] }}
               transition={{ duration: 1.5, repeat: Infinity }}
               className="inline-block"
             >
-              <svg
-                className="w-6 h-6 text-white/70 mx-auto"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+              <svg className="w-5 h-5 text-amber-400 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
               </svg>
             </motion.div>
@@ -292,7 +292,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Desktop Left Hero Panel */}
+      {/* Desktop Left Hero Panel - Uber-Grade Enterprise Showcase */}
       <div
         className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
         style={{
@@ -301,96 +301,164 @@ export default function HomePage() {
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-[#001a33]/80 via-[#002147]/70 to-[#003d66]/75" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20" />
+        {/* Layered cinematic overlays & glowing radial spotlights */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#001224]/95 via-[#002147]/90 to-[#00386b]/85" />
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#ff8c00]/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute bottom-1/4 right-10 w-80 h-80 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
+        
+        {/* Subtle grid pattern overlay for high-tech engineering aesthetic */}
+        <div
+          className="absolute inset-0 opacity-[0.03] pointer-events-none"
+          style={{
+            backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+            backgroundSize: "28px 28px",
+          }}
+        />
 
-        <div className="relative z-10 flex flex-col justify-between p-12 text-white w-full">
+        <div className="relative z-10 flex flex-col justify-between p-10 xl:p-14 text-white w-full h-full min-h-screen">
+          {/* Top Header Brand Bar */}
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="flex items-center gap-2.5"
+            className="flex items-center justify-between"
           >
-            <img src={UZ_CREST} alt="UZ Crest" className="w-10 h-10 drop-shadow-lg" />
-            <div>
-              <h1 className="text-base font-semibold tracking-tight">WRL Connect</h1>
-              <p className="text-xs text-white/75">University of Zimbabwe</p>
+            <div className="flex items-center gap-3.5">
+              <div className="relative group cursor-default">
+                <div className="absolute -inset-1 bg-gradient-to-r from-[#ff8c00] to-[#ffa726] rounded-2xl blur opacity-25 group-hover:opacity-60 transition duration-500" />
+                <div className="relative p-2.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl">
+                  <img src={UZ_CREST} alt="UZ Crest" className="w-10 h-10 object-contain drop-shadow-md" />
+                </div>
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-base font-bold tracking-tight text-white">WRL Connect</h1>
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-400/30 backdrop-blur-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    LIVE PORTAL
+                  </span>
+                </div>
+                <p className="text-xs text-white/75 font-medium">University of Zimbabwe · Education 5.0</p>
+              </div>
+            </div>
+
+            {/* Academic Year Pill */}
+            <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.08] backdrop-blur-md border border-white/15 text-xs text-white/80 shadow-sm">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="font-semibold text-white/90">2025/2026 Academic Session</span>
             </div>
           </motion.div>
 
+          {/* Central Hero Headline & Copy */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="space-y-4"
+            className="space-y-5 my-auto py-6"
           >
+            {/* Pill Tag */}
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-gradient-to-r from-amber-500/15 to-orange-500/15 backdrop-blur-md border border-amber-400/30 text-xs font-semibold text-amber-300 shadow-lg shadow-amber-500/5">
+              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              <span>Official Work-Related Learning Ecosystem</span>
+            </div>
+
+            {/* Main Headline */}
             <h2
-              className="text-4xl font-bold leading-tight tracking-tight"
-              style={{ textShadow: "0 2px 16px rgba(0,0,0,0.5)" }}
+              className="text-4xl xl:text-5xl font-extrabold leading-[1.12] tracking-tight text-white max-w-xl"
+              style={{ textShadow: "0 2px 20px rgba(0,0,0,0.6)" }}
             >
-              <span
-                className="inline-block relative"
-                style={{
-                  fontFamily: "'Playfair Display', serif",
-                  fontStyle: "italic",
-                  fontSize: "1.15em",
-                  fontWeight: 600,
-                  color: "#ffa726",
-                  textShadow:
-                    "0 2px 20px rgba(255, 140, 0, 0.4), 0 0 30px rgba(255, 140, 0, 0.2)",
-                }}
-              >
-                Your
+              Shaping Careers.
+              <br />
+              <span className="relative inline-block mt-1">
+                <span className="bg-gradient-to-r from-[#ffa726] via-[#ffb74d] to-[#ff9800] bg-clip-text text-transparent font-serif italic pr-1">
+                  Connecting
+                </span>
+                {" "}the Future.
                 <svg
-                  className="absolute -bottom-1 left-0 w-full h-2"
-                  viewBox="0 0 100 8"
+                  className="absolute -bottom-2 left-0 w-full h-3 text-[#ff8c00]"
+                  viewBox="0 0 220 12"
+                  fill="none"
                   preserveAspectRatio="none"
                 >
                   <path
-                    d="M0,7 Q25,0 50,5 T100,4"
-                    stroke="#ff8c00"
-                    strokeWidth="1.5"
-                    fill="none"
-                    opacity="0.6"
+                    d="M2 10C60 3 160 3 218 9"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    opacity="0.85"
                   />
                 </svg>
-              </span>{" "}
-              Work-Related
-              <br />
-              Learning Journey,
-              <br />
-              <span className="text-[#ff8c00]">Simplified.</span>
+              </span>
             </h2>
-            <p className="text-base text-white/90 max-w-md leading-relaxed font-normal">
-              Manage placements, submit logbooks, and stay connected with your supervisors and
-              lecturers — all in one platform.
+
+            {/* Subtitle */}
+            <p className="text-sm xl:text-base text-white/85 max-w-lg leading-relaxed font-normal">
+              Manage industrial attachments, record verified daily logbooks, and stay seamlessly connected with workplace supervisors and university assessors — all in one centralized platform.
             </p>
+
+            {/* Trust Micro-Metrics Strip */}
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/10 shadow-sm hover:bg-white/[0.1] transition-all">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span className="text-xs text-white/90 font-medium">Accredited WRL Framework</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/10 shadow-sm hover:bg-white/[0.1] transition-all">
+                <Award className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="text-xs text-white/90 font-medium">Standardized 40% / 60% Rubrics</span>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.06] backdrop-blur-md border border-white/10 shadow-sm hover:bg-white/[0.1] transition-all">
+                <TrendingUp className="w-4 h-4 text-blue-400 shrink-0" />
+                <span className="text-xs text-white/90 font-medium">Real-Time Progress Sync</span>
+              </div>
+            </div>
           </motion.div>
 
+          {/* 4 Feature Showcase Cards with Rich Glassmorphism */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.4 }}
-            className="grid grid-cols-2 gap-4"
+            className="grid grid-cols-2 gap-3.5 xl:gap-4 pt-4"
           >
             {features.map((f, idx) => (
               <motion.div
                 key={f.title}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: 0.5 + idx * 0.1 }}
-                className="flex items-start gap-3 p-4 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10 hover:bg-white/8 hover:border-white/20 transition-all cursor-default"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.45 + idx * 0.08 }}
+                className={`group relative p-4 rounded-2xl bg-white/[0.06] backdrop-blur-xl border border-white/15 ${f.border} hover:bg-white/[0.11] hover:-translate-y-1 transition-all duration-300 shadow-lg hover:shadow-2xl cursor-default overflow-hidden`}
               >
-                <div className="w-9 h-9 rounded-lg bg-white/10 backdrop-blur-sm flex items-center justify-center shrink-0 border border-white/20">
-                  <f.icon className="w-4 h-4 text-white/90" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-xs mb-1 text-white/95">{f.title}</h3>
-                  <p className="text-[11px] text-white/60 leading-snug">{f.desc}</p>
+                {/* Subtle ambient gradient sheen */}
+                <div className={`absolute -right-8 -top-8 w-24 h-24 rounded-full bg-gradient-to-br ${f.accent} blur-xl group-hover:scale-150 transition-transform duration-500`} />
+
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-2.5">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${f.iconBg} shadow-md group-hover:scale-105 transition-transform`}>
+                      <f.icon className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-[10px] font-bold text-amber-300/90 bg-amber-400/10 px-2 py-0.5 rounded-full border border-amber-400/20">
+                      {f.badge}
+                    </span>
+                  </div>
+                  <h3 className="font-bold text-xs text-white group-hover:text-amber-200 transition-colors mb-1">
+                    {f.title}
+                  </h3>
+                  <p className="text-[11px] text-white/70 leading-snug">
+                    {f.desc}
+                  </p>
                 </div>
               </motion.div>
             ))}
           </motion.div>
+
+          {/* Footer Directorate Stamp */}
+          <div className="pt-6 mt-4 border-t border-white/10 flex items-center justify-between text-xs text-white/60">
+            <div className="flex items-center gap-2">
+              <Compass className="w-3.5 h-3.5 text-amber-400" />
+              <span>Faculty of Computer Engineering Informatics & Communications</span>
+            </div>
+            <span className="font-medium text-white/50 text-[11px]">UZ WRL Directorate</span>
+          </div>
         </div>
       </div>
 
