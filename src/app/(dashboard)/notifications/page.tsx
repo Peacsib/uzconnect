@@ -264,7 +264,7 @@ export default function NotificationsPage() {
       {/* Top Banner & Greeting (The Forge & Old Mutual Style) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
         <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#00875a] dark:text-emerald-400">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-[#003366] dark:text-blue-400">
             Institutional Audit & Notifications
           </span>
           <h1 className="text-2xl font-bold tracking-tight text-foreground mt-0.5">
@@ -378,7 +378,7 @@ export default function NotificationsPage() {
             variant={activeTab === "logbooks" ? "default" : "outline"}
             size="sm"
             onClick={() => setActiveTab("logbooks")}
-            className={cn("text-xs h-8 rounded-full px-3.5 cursor-pointer font-medium", activeTab === "logbooks" && "bg-emerald-700 text-white")}
+            className={cn("text-xs h-8 rounded-full px-3.5 cursor-pointer font-medium", activeTab === "logbooks" && "bg-[#003366] text-white")}
           >
             Logbooks ({stats.logbooks})
           </Button>
@@ -433,7 +433,7 @@ export default function NotificationsPage() {
                   className={cn(
                     "p-3.5 rounded-xl border transition-all cursor-pointer text-left space-y-1.5 relative",
                     isSelected
-                      ? "border-[#00875a] bg-[#00875a]/[0.04] shadow-xs"
+                      ? "border-[#003366] bg-[#003366]/[0.05] dark:border-blue-400 dark:bg-blue-900/20 shadow-xs"
                       : "border-border/60 bg-card hover:border-border hover:bg-muted/30",
                     !n.read && "border-l-4 border-l-[#ff8c00]"
                   )}
@@ -473,11 +473,11 @@ export default function NotificationsPage() {
             {selectedNotif ? (
               <Card className="border-border/70 shadow-sm rounded-2xl overflow-hidden sticky top-20">
                 {/* Top Accent Stripe */}
-                <div className="h-1.5 bg-gradient-to-r from-[#00875a] via-[#003366] to-[#00875a] w-full" />
+                <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#003366] w-full" />
 
                 <CardHeader className="pb-4 border-b border-border/50">
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#00875a] dark:text-emerald-400">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#003366] dark:text-blue-400">
                       {getCategoryName(selectedNotif.type)}
                     </span>
                     <Badge
@@ -516,7 +516,7 @@ export default function NotificationsPage() {
                   {/* Context Card (The Forge "What moves you forward" Pattern) */}
                   <div className="p-4 rounded-xl border border-border/50 bg-background space-y-2 text-xs">
                     <p className="font-semibold text-foreground flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#00875a] dark:text-emerald-400" />
+                      <Sparkles className="w-4 h-4 text-[#003366] dark:text-blue-400" />
                       What moves you forward
                     </p>
                     <p className="text-[11px] text-muted-foreground">
@@ -524,12 +524,12 @@ export default function NotificationsPage() {
                     </p>
                     <ul className="space-y-2 text-muted-foreground text-[11px] pt-1">
                       <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#00875a] shrink-0 mt-1.5" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#003366] dark:bg-blue-400 shrink-0 mt-1.5" />
                         <span>Actionable record synchronized with your university account profile.</span>
                       </li>
                       {selectedNotif.link && (
                         <li className="flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#00875a] shrink-0 mt-1.5" />
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#003366] dark:bg-blue-400 shrink-0 mt-1.5" />
                           <span>Direct confirmation or grading response available at target module.</span>
                         </li>
                       )}
@@ -562,7 +562,7 @@ export default function NotificationsPage() {
                       <Button
                         size="sm"
                         onClick={() => router.push(selectedNotif.link!)}
-                        className="w-full sm:w-auto bg-[#00875a] hover:bg-[#00704a] text-white text-xs font-semibold h-8.5 px-5 rounded-lg cursor-pointer flex items-center justify-center gap-2 shadow-xs"
+                        className="w-full sm:w-auto bg-[#003366] hover:bg-[#002244] text-white text-xs font-semibold h-8.5 px-5 rounded-lg cursor-pointer flex items-center justify-center gap-2 shadow-xs"
                       >
                         <span>Open Related Page</span>
                         <ExternalLink className="w-3.5 h-3.5" />

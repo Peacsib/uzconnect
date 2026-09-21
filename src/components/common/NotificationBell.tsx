@@ -329,14 +329,14 @@ export function NotificationBell() {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="max-w-lg p-0 overflow-hidden rounded-2xl border-border/70 shadow-2xl">
           {/* Top Brand Accent Stripe (Old Mutual Green Accent) */}
-          <div className="h-1.5 bg-gradient-to-r from-[#00875a] via-[#003366] to-[#00875a] w-full" />
+          <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#003366] w-full" />
 
           {selectedNotif && (
             <div className="p-6 space-y-5">
               {/* Header with Eyebrow and Status */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#00875a] dark:text-emerald-400">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[#003366] dark:text-blue-400">
                     {getNotificationCategory(selectedNotif.type)}
                   </span>
                   <Badge
@@ -374,17 +374,17 @@ export function NotificationBell() {
               {/* The Forge Style "What moves you forward" Card */}
               <div className="p-3.5 rounded-xl border border-border/50 bg-background/80 space-y-2 text-xs">
                 <p className="font-semibold text-foreground flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-[#00875a] dark:text-emerald-400" />
+                  <Sparkles className="w-3.5 h-3.5 text-[#003366] dark:text-blue-400" />
                   Institutional Action Context
                 </p>
                 <ul className="space-y-1.5 text-muted-foreground text-[11px]">
                   <li className="flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00875a] shrink-0 mt-1" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#003366] dark:bg-blue-400 shrink-0 mt-1" />
                     <span>This notice has been logged to your permanent University of Zimbabwe record.</span>
                   </li>
                   {selectedNotif.link && (
                     <li className="flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#00875a] shrink-0 mt-1" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#003366] dark:bg-blue-400 shrink-0 mt-1" />
                       <span>Direct response or verification required at destination workflow.</span>
                     </li>
                   )}
@@ -429,7 +429,7 @@ export function NotificationBell() {
                         setDetailOpen(false);
                         router.push(selectedNotif.link!);
                       }}
-                      className="bg-[#00875a] hover:bg-[#00704a] text-white text-xs font-semibold h-8 px-4 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 flex-1 sm:flex-none shadow-xs"
+                      className="bg-[#003366] hover:bg-[#002244] text-white text-xs font-semibold h-8 px-4 rounded-lg cursor-pointer flex items-center justify-center gap-1.5 flex-1 sm:flex-none shadow-xs"
                     >
                       <span>Open Related Page</span>
                       <ExternalLink className="w-3.5 h-3.5" />

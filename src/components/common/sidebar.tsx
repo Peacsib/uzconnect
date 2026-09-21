@@ -128,7 +128,7 @@ export function AppSidebar({ open, onClose }: SidebarProps) {
         {/* The Forge Style Bottom User Card */}
         <div className="p-3 border-t border-sidebar-border/70 bg-sidebar/50">
           <div className="flex items-center gap-2.5 px-2 py-1.5">
-            <div className="w-8 h-8 rounded-full bg-[#00875a]/15 text-[#00875a] dark:text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#003366]/15 text-[#003366] dark:bg-blue-900/30 dark:text-blue-300 font-bold text-xs flex items-center justify-center shrink-0">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
