@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext"
 import {
   LucideIcon, LayoutDashboard, Briefcase, FileText, CalendarDays,
   MessageSquare, Star, Users, ClipboardCheck, BarChart3, Building2,
-  BookOpen, Send, CheckCircle
+  BookOpen, Send, CheckCircle, Bell, LogOut
 } from "lucide-react"
 import { placements } from "@/utils/mockData"
 
@@ -31,6 +31,7 @@ const getStudentNav = (userId?: string): NavItem[] => {
     { label: "Deadlines", to: "/student/deadlines", icon: CalendarDays },
     { label: "Feedback", to: "/student/feedback", icon: Star },
     { label: "Messages", to: "/student/messages", icon: MessageSquare },
+    { label: "Notifications", to: "/notifications", icon: Bell },
   )
   return items
 }
@@ -43,6 +44,7 @@ const supervisorNav: NavItem[] = [
   { label: "Submissions", to: "/supervisor/submissions", icon: FileText },
   { label: "Assessments", to: "/supervisor/assessments", icon: ClipboardCheck },
   { label: "Messages", to: "/supervisor/messages", icon: MessageSquare },
+  { label: "Notifications", to: "/notifications", icon: Bell },
 ]
 
 const lecturerNav: NavItem[] = [
@@ -54,6 +56,7 @@ const lecturerNav: NavItem[] = [
   { label: "Assessments", to: "/lecturer/assessments", icon: ClipboardCheck },
   { label: "Analytics", to: "/lecturer/analytics", icon: BarChart3 },
   { label: "Messages", to: "/lecturer/messages", icon: MessageSquare },
+  { label: "Notifications", to: "/notifications", icon: Bell },
 ]
 
 const coordinatorNav: NavItem[] = [
@@ -61,6 +64,7 @@ const coordinatorNav: NavItem[] = [
   { label: "Students", to: "/coordinator/students", icon: Users },
   { label: "Placements", to: "/coordinator/placements", icon: ClipboardCheck },
   { label: "Messages", to: "/coordinator/messages", icon: MessageSquare },
+  { label: "Notifications", to: "/notifications", icon: Bell },
 ]
 
 export function getNavItems(role?: string, userId?: string): NavItem[] {
@@ -79,17 +83,27 @@ interface SidebarProps {
 }
 
 export function AppSidebar({ open, onClose }: SidebarProps) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const pathname = usePathname()
 
   const role = user?.role || (pathname.startsWith("/supervisor") ? "supervisor" : pathname.startsWith("/lecturer") ? "lecturer" : pathname.startsWith("/coordinator") ? "coordinator" : "student")
   const items = getNavItems(role, user?.id)
 
+  const initials = (user?.name || "User")
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase()
+
   return (
     <>
       {open && <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={onClose} />}
-      <aside className={`fixed top-14 left-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border z-50 transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"}`}>
-        <nav className="p-3 space-y-1">
+      <aside className={`fixed top-14 left-0 bottom-0 w-60 bg-sidebar border-r border-sidebar-border z-50 transition-transform duration-200 lg:translate-x-0 ${open ? "translate-x-0" : "-translate-x-full"} flex flex-col justify-between`}>
+        <nav className="p-3 space-y-1 overflow-y-auto flex-1">
+          <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+            Navigation
+          </div>
           {items.map((item) => {
             const active = pathname === item.to || (item.to !== "/student" && item.to !== "/supervisor" && item.to !== "/lecturer" && item.to !== "/coordinator" && pathname.startsWith(item.to))
             return (
@@ -97,19 +111,36 @@ export function AppSidebar({ open, onClose }: SidebarProps) {
                 key={item.to}
                 href={item.to}
                 onClick={onClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
                   active
-                    ? "bg-sidebar-accent text-sidebar-primary"
+                    ? "bg-sidebar-accent text-sidebar-primary font-semibold"
                     : "text-sidebar-foreground hover:bg-sidebar-accent/50"
                 }`}
               >
-                <item.icon className={`w-4 h-4 ${active ? "text-sidebar-primary" : ""}`} />
-                {item.label}
+                <item.icon className={`w-4 h-4 shrink-0 ${active ? "text-sidebar-primary" : "text-muted-foreground"}`} />
+                <span>{item.label}</span>
                 {active && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-sidebar-primary" />}
               </Link>
             )
           })}
         </nav>
+
+        {/* The Forge Style Bottom User Card */}
+        <div className="p-3 border-t border-sidebar-border/70 bg-sidebar/50">
+          <div className="flex items-center gap-2.5 px-2 py-1.5">
+            <div className="w-8 h-8 rounded-full bg-[#00875a]/15 text-[#00875a] dark:text-emerald-400 font-bold text-xs flex items-center justify-center shrink-0">
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-semibold text-foreground truncate leading-tight">
+                {user?.name || "User"}
+              </p>
+              <p className="text-[10px] text-muted-foreground capitalize truncate">
+                {user?.role?.toLowerCase() || "Member"}
+              </p>
+            </div>
+          </div>
+        </div>
       </aside>
     </>
   )

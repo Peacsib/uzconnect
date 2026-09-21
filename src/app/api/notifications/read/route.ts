@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     const session = await auth();
     const body = await request.json();
-    const { id, all, email: emailParam } = body;
+    const { id, all, read = true, email: emailParam } = body;
 
     const email = (session?.user?.email || emailParam || "").trim().toLowerCase();
 
@@ -24,18 +24,18 @@ export async function POST(request: Request) {
 
     if (all) {
       await prisma.notification.updateMany({
-        where: { userId: user.id, read: false },
-        data: { read: true },
+        where: { userId: user.id },
+        data: { read: Boolean(read) },
       });
-      return NextResponse.json({ success: true, message: "All notifications marked as read" });
+      return NextResponse.json({ success: true, message: `All notifications marked as ${read ? "read" : "unread"}` });
     }
 
     if (id) {
       await prisma.notification.update({
         where: { id },
-        data: { read: true },
+        data: { read: Boolean(read) },
       });
-      return NextResponse.json({ success: true, message: "Notification marked as read" });
+      return NextResponse.json({ success: true, message: `Notification marked as ${read ? "read" : "unread"}` });
     }
 
     return NextResponse.json({ success: false, error: "Missing notification ID or all flag" }, { status: 400 });

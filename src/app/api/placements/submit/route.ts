@@ -18,6 +18,7 @@ export async function POST(request: Request) {
           ...(regPrefix ? [{ regNumber: regPrefix }] : []),
         ],
       },
+      include: { user: true },
     });
 
     if (!student) {
@@ -53,6 +54,35 @@ export async function POST(request: Request) {
         startDate: startDate ? new Date(startDate) : new Date(),
         endDate: endDate ? new Date(endDate) : new Date(Date.now() + 30 * 7 * 24 * 60 * 60 * 1000),
         status: "PENDING",
+      },
+    });
+
+    // Notify all coordinators in PostgreSQL
+    const coordinators = await prisma.user.findMany({
+      where: { role: "COORDINATOR" },
+    });
+    for (const coord of coordinators) {
+      await prisma.notification.create({
+        data: {
+          userId: coord.id,
+          title: "New Placement Registration Submitted",
+          message: `${student.user.name} (${student.regNumber}) has submitted industrial attachment details for ${companyName || "Host Company"} (${companyCity || "Harare"}) for coordinator verification.`,
+          type: "PLACEMENT_PENDING",
+          link: "/coordinator/placements",
+          read: false,
+        },
+      });
+    }
+
+    // Confirmation notification for the student
+    await prisma.notification.create({
+      data: {
+        userId: student.userId,
+        title: "Placement Submission Received",
+        message: `Your industrial attachment registration for ${companyName || "Host Company"} has been submitted and is currently pending verification by Department Coordinator Jameson Sibanda.`,
+        type: "PLACEMENT_PENDING",
+        link: "/student/placement",
+        read: false,
       },
     });
 

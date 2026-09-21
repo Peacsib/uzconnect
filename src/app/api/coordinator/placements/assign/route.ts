@@ -152,6 +152,20 @@ export async function POST(request: Request) {
         });
       }
 
+      // Send notification to the student about their assigned academic lecturer
+      if (placement.student?.userId && lecturer) {
+        await prisma.notification.create({
+          data: {
+            userId: placement.student.userId,
+            title: "Academic Assessor Assigned",
+            message: `Lecturer ${lecturer.user.name} (${lecturer.department}) has been assigned as your University Academic Supervisor for your attachment at ${placement.company.name}.`,
+            type: "ALLOCATION",
+            read: false,
+            link: "/student/placement",
+          },
+        });
+      }
+
       console.log(`[Lecturer Assigned] Placement ${targetPlacementId} -> Lecturer ${lecturer ? lecturer.user.name : "Unassigned"}`);
 
       return NextResponse.json({

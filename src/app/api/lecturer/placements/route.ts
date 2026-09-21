@@ -103,6 +103,25 @@ export async function POST(request: Request) {
 
     await Promise.all(upsertPromises);
 
+    // Notify student about published deadlines
+    const targetPlacement = await prisma.placement.findUnique({
+      where: { id: placementId },
+      include: { student: true },
+    });
+
+    if (targetPlacement?.student?.userId) {
+      await prisma.notification.create({
+        data: {
+          userId: targetPlacement.student.userId,
+          title: "Logbook Deadlines Scheduled",
+          message: `Your academic supervisor has scheduled milestone deadlines for your 12-week industrial attachment logbook.`,
+          type: "LOGBOOK_DEADLINES",
+          read: false,
+          link: "/student/logbook",
+        },
+      });
+    }
+
     return NextResponse.json({ success: true, message: "Deadlines saved successfully" });
   } catch (error: any) {
     console.error("Error saving placement deadlines:", error);
