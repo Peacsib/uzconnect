@@ -1,22 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import { motion } from "framer-motion";
-import { Eye, Calendar, FileDown, Search, Loader2, MessageSquare, Clock } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { 
+  Eye, 
+  Calendar, 
+  FileDown, 
+  Search, 
+  Loader2, 
+  MessageSquare, 
+  Clock, 
+  CheckCircle2, 
+  BookOpen, 
+  Building2, 
+  UserCheck, 
+  RefreshCw,
+  AlertCircle,
+  GraduationCap
+} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format, parseISO } from "date-fns";
-import { cn } from "@/lib/utils";
-import { getStatusColor } from "@/utils/formatters";
-import { usePlacements, useLogbookEntries, useUpdateLogbookDeadline, useStudents } from "@/hooks/useApi";
 import { toast } from "sonner";
 import { PDFDownloadLink } from "@react-pdf/renderer";
 import MarkedLogbookPDF from "@/components/pdf/MarkedLogbookPDF";
@@ -24,482 +35,421 @@ import MarkedLogbookPDF from "@/components/pdf/MarkedLogbookPDF";
 export default function LogbookOverview() {
   const { user } = useAuth();
   
-  // Fetch data
-  const { data: placements, isLoading: placementsLoading } = usePlacements();
-  const { data: logbookEntries, isLoading: entriesLoading } = useLogbookEntries();
-  const { data: studentsData, isLoading: studentsLoading } = useStudents();
-  const updateDeadline = useUpdateLogbookDeadline();
-  
-  // State
+  const [data, setData] = useState<{ students: any[]; entries: any[] } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
-  const [viewDialogOpen, setViewDialogOpen] = useState(false);
-  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
-  const [newDueDate, setNewDueDate] = useState<Date>();
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewComment, setReviewComment] = useState("");
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const isLoading = placementsLoading || entriesLoading || studentsLoading;
-
-  // Filter placements assigned to current lecturer
-  const myPlacements = placements?.filter((p) => p.lecturer_id === user?.id) || [];
-  const studentIds = myPlacements.map((p) => p.student_id);
-  
-  // Get students
-  const studentsArr = Array.isArray(studentsData) ? studentsData : (studentsData as any)?.data || [];
-  const students = studentsArr.filter((s: any) => studentIds.includes(s.id)) || [];
-  
-  // Filter logbook entries for assigned students
-  const assignedEntries = logbookEntries?.filter((e) => studentIds.includes(e.student_id)) || [];
-  
-  // Calculate statistics per student
-  const studentSummary = students.map((student: any) => {
-    const entries = assignedEntries.filter((e) => e.student_id === student.id);
-    const pendingLecturerCount = entries.filter((e) => e.status === 'pending_lecturer').length;
-    const approvedCount = entries.filter((e) => e.status === 'approved').length;
-    const overdueCount = entries.filter((e) => 
-      e.due_date && 
-      new Date(e.due_date) < new Date() && 
-      (e.status === 'draft' || e.status === 'rejected')
-    ).length;
-    const totalCount = entries.length;
-    
-    return {
-      ...student,
-      pendingLecturerCount,
-      approvedCount,
-      overdueCount,
-      totalCount,
-      entries,
-    };
-  }).filter((s: any) => 
-    searchQuery === "" || 
-    s.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.user?.reg_number?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
-      </div>
-    );
-  }
-
-  if (myPlacements.length === 0) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Logbook Overview</h1>
-        <Card>
-          <CardContent className="pt-6 text-center space-y-3">
-            <p className="text-lg font-medium">No students assigned</p>
-            <p className="text-sm text-muted-foreground">You don't have any students assigned to you yet.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  const handleViewDetails = (student: any) => {
-    setSelectedStudent(student);
-    setSelectedEntry(null);
-  };
-
-  const handleViewEntry = (entry: any) => {
-    setSelectedEntry(entry);
-    setViewDialogOpen(true);
-  };
-
-  const handleExtensionClick = (entry: any) => {
-    setSelectedEntry(entry);
-    setNewDueDate(entry.due_date ? new Date(entry.due_date) : undefined);
-    setExtensionDialogOpen(true);
-  };
-
-  const handleGrantExtension = async () => {
-    if (!selectedEntry || !newDueDate) {
-      toast.error("Please select a new due date");
-      return;
-    }
-    
+  const fetchData = useCallback(async () => {
     try {
-      await updateDeadline.mutateAsync({ 
-        id: selectedEntry.id, 
-        dueDate: format(newDueDate, "yyyy-MM-dd") 
-      });
-      setExtensionDialogOpen(false);
-      setNewDueDate(undefined);
-      setSelectedEntry(null);
-      if (selectedStudent) {
-        // Refresh student data
-        const updatedStudent = studentSummary.find((s: any) => s.id === selectedStudent.id);
-        if (updatedStudent) setSelectedStudent(updatedStudent);
+      setIsLoading(true);
+      const email = user?.email || "";
+      const res = await fetch(`/api/lecturer/logbook${email ? `?email=${encodeURIComponent(email)}` : ""}`);
+      const json = await res.json();
+      if (json.success) {
+        setData(json);
+        if (selectedStudent) {
+          const updated = json.students.find((s: any) => s.studentId === selectedStudent.studentId);
+          if (updated) setSelectedStudent(updated);
+        }
+      } else {
+        toast.error(json.error || "Failed to load logbooks");
       }
-    } catch (error) {
-      // Error handled by hook
+    } catch {
+      toast.error("Network error loading logbook entries");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.email, selectedStudent?.studentId]);
+
+  useEffect(() => {
+    fetchData();
+  }, [user?.email]);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    setIsRefreshing(false);
+    toast.success("Logbook records synchronized");
+  };
+
+  const students = data?.students || [];
+
+  const filteredStudents = students.filter((s: any) => {
+    const q = searchQuery.toLowerCase();
+    return (
+      !q ||
+      s.name.toLowerCase().includes(q) ||
+      s.regNumber.toLowerCase().includes(q) ||
+      s.companyName.toLowerCase().includes(q)
+    );
+  });
+
+  const handleOpenReview = (entry: any, student: any) => {
+    setSelectedEntry({ ...entry, studentName: student.name, studentReg: student.regNumber });
+    setReviewComment(entry.lecturerComment || "");
+    setReviewDialogOpen(true);
+  };
+
+  const handleSubmitReview = async (approved: boolean) => {
+    if (!selectedEntry) return;
+
+    try {
+      setIsSubmittingReview(true);
+      const res = await fetch("/api/lecturer/logbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entryId: selectedEntry.id,
+          comment: reviewComment,
+          approved,
+        }),
+      });
+      const json = await res.json();
+
+      if (json.success) {
+        toast.success(approved ? "Week approved with official academic sign-off!" : "Academic feedback saved.");
+        setReviewDialogOpen(false);
+        // Refresh local data
+        await fetchData();
+      } else {
+        toast.error(json.error || "Failed to submit review");
+      }
+    } catch {
+      toast.error("Network error submitting review");
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
+
+  if (isLoading && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#003366] dark:text-[#ff8c00]" />
+        <p className="text-xs text-muted-foreground font-medium">Loading student logbook entries...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">Logbook Overview</h1>
-        <div className="flex gap-2 items-center">
-          <div className="relative">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search students..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 w-64"
-            />
-          </div>
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <BookOpen className="w-7 h-7 text-[#003366] dark:text-[#ff8c00]" />
+            Academic Logbook Review & Governance
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Review student weekly tasks, inspect workplace supervisor remarks, and provide university academic sign-offs.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-xs h-9"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
       </div>
 
-      {/* Students List */}
-      {!selectedStudent && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <Card>
-            <CardHeader>
-              <CardTitle>My Students ({studentSummary.length})</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Student Name</TableHead>
-                      <TableHead>Reg Number</TableHead>
-                      <TableHead className="text-center">Total Entries</TableHead>
-                      <TableHead className="text-center">Pending Review</TableHead>
-                      <TableHead className="text-center">Overdue</TableHead>
-                      <TableHead className="text-center">Approved</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {studentSummary.map((student: any) => (
-                      <TableRow key={student.id}>
-                        <TableCell className="font-medium">{student.user?.name || "N/A"}</TableCell>
-                        <TableCell className="font-mono text-sm">{student.user?.reg_number || "N/A"}</TableCell>
-                        <TableCell className="text-center">{student.totalCount}</TableCell>
-                        <TableCell className="text-center">
-                          {student.pendingLecturerCount > 0 ? (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                              {student.pendingLecturerCount}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {student.overdueCount > 0 ? (
-                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
-                              {student.overdueCount}
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground">0</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <span className="text-green-600 font-medium">{student.approvedCount}</span>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewDetails(student)}
-                          >
-                            <Eye className="w-4 h-4 mr-1" />
-                            View Logbook
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                    {studentSummary.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                          No students found
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* Student Logbook Details */}
-      {selectedStudent && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="mb-4">
-            <Button variant="outline" onClick={() => setSelectedStudent(null)}>
-              ← Back to Students
-            </Button>
-          </div>
-
-          <Card className="mb-4">
-            <CardContent className="pt-4 pb-3">
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 text-sm">
-                <div><span className="text-muted-foreground">Student:</span> <span className="font-medium">{selectedStudent.user?.name}</span></div>
-                <div><span className="text-muted-foreground">Reg No:</span> <span className="font-medium font-mono">{selectedStudent.user?.reg_number}</span></div>
-                <div><span className="text-muted-foreground">Total:</span> <span className="font-medium">{selectedStudent.totalCount}</span></div>
-                <div><span className="text-muted-foreground">Pending:</span> <span className="font-medium text-blue-600">{selectedStudent.pendingLecturerCount}</span></div>
-                <div><span className="text-muted-foreground">Overdue:</span> <span className="font-medium text-red-600">{selectedStudent.overdueCount}</span></div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Logbook Entries (Read-Only)</h2>
-            {selectedStudent.entries.length > 0 && (
-              <PDFDownloadLink
-                document={
-                  <MarkedLogbookPDF
-                    studentName={selectedStudent.user?.name || ""}
-                    regNumber={selectedStudent.user?.reg_number || ""}
-                    faculty="Science"
-                    department="Computer Science"
-                    programme="BSc Computer Science"
-                    hostInstitution="Placement Company"
-                    supervisorName="Supervisor"
-                    lecturerName={user?.name || "Lecturer"}
-                    entries={selectedStudent.entries.map((e: any) => ({
-                      week: e.week,
-                      weekEndingDate: e.week_ending_date,
-                      objectives: e.objectives,
-                      actualTasks: e.actual_tasks,
-                      reflection: e.reflection,
-                      status: e.status,
-                      supervisorComment: e.supervisor_comment,
-                      supervisorApproved: e.supervisor_approved,
-                      lecturerApproved: e.lecturer_approved,
-                    }))}
-                  />
-                }
-                fileName={`Marked_Logbook_${selectedStudent.user?.name?.replace(/\s+/g, "_")}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button variant="outline" size="sm" disabled={loading}>
-                    <FileDown className="w-4 h-4 mr-1" />
-                    {loading ? "Generating..." : "Export Marked PDF"}
-                  </Button>
-                )}
-              </PDFDownloadLink>
-            )}
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Logbook Entries (Read-Only)</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[70px]">Week</TableHead>
-                      <TableHead className="w-[110px]">Week Ending</TableHead>
-                      <TableHead className="w-[110px]">Due Date</TableHead>
-                      <TableHead>Objectives</TableHead>
-                      <TableHead>Actual Tasks</TableHead>
-                      <TableHead>Reflection</TableHead>
-                      <TableHead className="w-[120px]">Status</TableHead>
-                      <TableHead className="w-[180px] text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {selectedStudent.entries.sort((a: any, b: any) => a.week - b.week).map((entry: any) => {
-                      const isOverdue = entry.due_date && 
-                        new Date(entry.due_date) < new Date() && 
-                        (entry.status === 'draft' || entry.status === 'rejected');
-                      
-                      return (
-                        <TableRow key={entry.id}>
-                          <TableCell className="font-medium text-center">{entry.week}</TableCell>
-                          <TableCell className="text-sm">{format(parseISO(entry.week_ending_date), "dd MMM yyyy")}</TableCell>
-                          <TableCell className="text-sm">
-                            {entry.due_date ? (
-                              <span className={isOverdue ? "text-red-600 font-medium" : ""}>
-                                {format(parseISO(entry.due_date), "dd MMM yyyy")}
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-2">{entry.objectives}</p></TableCell>
-                          <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-2">{entry.actual_tasks}</p></TableCell>
-                          <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-2">{entry.reflection}</p></TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(entry.status)}`}>
-                              {entry.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex gap-1 justify-end">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewEntry(entry)}
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              {entry.due_date && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleExtensionClick(entry)}
-                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                                  title="Extend deadline"
-                                >
-                                  <Clock className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {selectedStudent.entries.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                          No entries yet
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
-
-      {/* View Entry Dialog */}
-      <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Logbook Entry - Week {selectedEntry?.week}</DialogTitle>
-          </DialogHeader>
-          {selectedEntry && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-muted-foreground">Week Ending Date</Label>
-                  <p className="font-medium">{format(parseISO(selectedEntry.week_ending_date), "PPP")}</p>
-                </div>
-                {selectedEntry.due_date && (
-                  <div>
-                    <Label className="text-muted-foreground">Due Date</Label>
-                    <p className="font-medium">{format(parseISO(selectedEntry.due_date), "PPP")}</p>
-                  </div>
-                )}
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Objectives for the week / To-do list</Label>
-                <p className="text-sm mt-1 whitespace-pre-wrap">{selectedEntry.objectives}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Actual completed tasks / outcomes</Label>
-                <p className="text-sm mt-1 whitespace-pre-wrap">{selectedEntry.actual_tasks}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Introspection and reflective comments</Label>
-                <p className="text-sm mt-1 whitespace-pre-wrap">{selectedEntry.reflection}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Status</Label>
-                <div className="mt-1">
-                  <Badge variant="outline" className={getStatusColor(selectedEntry.status)}>
-                    {selectedEntry.status}
-                  </Badge>
-                </div>
-              </div>
-              {selectedEntry.supervisor_comment && (
-                <div className="bg-muted/50 p-3 rounded-md">
-                  <Label className="text-muted-foreground flex items-center gap-1">
-                    <MessageSquare className="w-4 h-4" />
-                    Supervisor Comment
-                  </Label>
-                  <p className="text-sm mt-1 whitespace-pre-wrap">{selectedEntry.supervisor_comment}</p>
-                </div>
-              )}
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Extension Dialog */}
-      <Dialog open={extensionDialogOpen} onOpenChange={setExtensionDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Extend Deadline</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Extend the deadline for Week {selectedEntry?.week} logbook entry.
+      {students.length === 0 ? (
+        <Card className="border-border/60 shadow-xs">
+          <CardContent className="pt-12 pb-12 text-center space-y-3">
+            <BookOpen className="w-12 h-12 mx-auto text-muted-foreground/40" />
+            <p className="text-base font-semibold text-foreground">No students assigned to your supervision</p>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              Once the Departmental Coordinator allocates students to you, their weekly logbook submissions will appear here for review.
             </p>
-            {selectedEntry?.due_date && (
-              <div className="bg-muted/50 p-3 rounded-md">
-                <Label className="text-muted-foreground">Current Due Date</Label>
-                <p className="font-medium">{format(parseISO(selectedEntry.due_date), "PPP")}</p>
-              </div>
-            )}
-            <div>
-              <Label>New Due Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    className={cn(
-                      "w-full justify-start text-left font-normal mt-1",
-                      !newDueDate && "text-muted-foreground"
-                    )}
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid lg:grid-cols-12 gap-6">
+          {/* Left Column: Student Roster */}
+          <div className="lg:col-span-5 space-y-3">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search students by name, reg number..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 text-xs h-9"
+              />
+            </div>
+
+            <div className="space-y-2.5">
+              {filteredStudents.map((s: any) => {
+                const isSelected = selectedStudent?.studentId === s.studentId;
+                return (
+                  <Card
+                    key={s.studentId}
+                    onClick={() => setSelectedStudent(s)}
+                    className={`border cursor-pointer transition-all hover:shadow-xs ${
+                      isSelected
+                        ? "border-[#003366] dark:border-[#ff8c00] bg-muted/40 shadow-xs"
+                        : "border-border/60 hover:border-border"
+                    }`}
                   >
-                    <Calendar className="mr-2 h-4 w-4" />
-                    {newDueDate ? format(newDueDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent 
-                    mode="single" 
-                    selected={newDueDate} 
-                    onSelect={setNewDueDate}
-                    disabled={(date) => date < new Date()}
-                     
-                    className="p-3 pointer-events-auto" 
-                  />
-                </PopoverContent>
-              </Popover>
+                    <CardContent className="p-4 space-y-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-bold text-sm text-foreground">{s.name}</div>
+                          <div className="text-[11px] font-mono text-[#003366] dark:text-blue-400 mt-0.5">
+                            {s.regNumber} • {s.programmeCode}
+                          </div>
+                        </div>
+                        {s.pendingReviewCount > 0 ? (
+                          <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px] font-semibold">
+                            {s.pendingReviewCount} Pending Review
+                          </Badge>
+                        ) : s.submittedCount > 0 ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold">
+                            All Reviewed
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                            No Submissions
+                          </Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground pt-1">
+                        <Building2 className="w-3.5 h-3.5 shrink-0" />
+                        <span className="font-medium text-foreground truncate">{s.companyName}</span>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                        <span>Total Entries: <strong>{s.totalEntries}</strong></span>
+                        <span className="text-emerald-600 dark:text-emerald-400">
+                          Approved: <strong>{s.approvedCount}</strong>
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setExtensionDialogOpen(false)}>Cancel</Button>
+
+          {/* Right Column: Detailed Entries of Selected Student */}
+          <div className="lg:col-span-7">
+            {selectedStudent ? (
+              <Card className="border-border/60 shadow-xs">
+                <CardHeader className="border-b border-border/40 pb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base font-bold text-foreground">
+                          {selectedStudent.name}
+                        </CardTitle>
+                        <Badge variant="outline" className="font-mono text-[10px]">
+                          {selectedStudent.regNumber}
+                        </Badge>
+                      </div>
+                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                        Attachment at <strong>{selectedStudent.companyName}</strong> • Mentor: {selectedStudent.supervisorName}
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-4 space-y-4">
+                  {selectedStudent.entries.length === 0 ? (
+                    <div className="py-12 text-center space-y-2">
+                      <BookOpen className="w-8 h-8 mx-auto text-muted-foreground/40" />
+                      <p className="text-sm font-semibold text-foreground">No logbook entries logged yet</p>
+                      <p className="text-xs text-muted-foreground">
+                        The student has not created or submitted any weekly logbook entries yet.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {selectedStudent.entries.map((entry: any) => {
+                        const isSubmitted = entry.status === "SUBMITTED" || entry.status === "APPROVED";
+                        const isLecturerApproved = entry.lecturerApproved;
+                        const isSupervisorApproved = entry.supervisorApproved;
+
+                        return (
+                          <div
+                            key={entry.id}
+                            className="p-4 rounded-xl border border-border/60 bg-muted/15 space-y-3"
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/40 pb-2">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-sm text-foreground">
+                                  Week {entry.week}
+                                </span>
+                                {entry.weekEndingDate && (
+                                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" />
+                                    Ending: {format(parseISO(entry.weekEndingDate), "PP")}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {isSupervisorApproved ? (
+                                  <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px]">
+                                    <UserCheck className="w-3 h-3 mr-1" /> Mentor Signed
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-muted-foreground text-[10px]">
+                                    Mentor Pending
+                                  </Badge>
+                                )}
+
+                                {isLecturerApproved ? (
+                                  <Badge className="bg-emerald-600 text-white text-[10px]">
+                                    <CheckCircle2 className="w-3 h-3 mr-1" /> Academic Approved
+                                  </Badge>
+                                ) : isSubmitted ? (
+                                  <Badge className="bg-amber-500/20 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px]">
+                                    <Clock className="w-3 h-3 mr-1" /> Pending Lecturer Sign-off
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="text-[10px]">Draft</Badge>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Logbook Tasks Content */}
+                            <div className="space-y-2 text-xs">
+                              <div>
+                                <span className="font-semibold text-foreground block">Key Objectives:</span>
+                                <p className="text-muted-foreground mt-0.5">{entry.objectives || "Not specified."}</p>
+                              </div>
+                              <div>
+                                <span className="font-semibold text-foreground block">Tasks Completed:</span>
+                                <p className="text-muted-foreground mt-0.5">{entry.actualTasks || "Not specified."}</p>
+                              </div>
+                              <div>
+                                <span className="font-semibold text-foreground block">Student Reflection & Skill Acquisition:</span>
+                                <p className="text-muted-foreground mt-0.5">{entry.reflection || "Not specified."}</p>
+                              </div>
+                            </div>
+
+                            {/* Comments Section */}
+                            {(entry.supervisorComment || entry.lecturerComment) && (
+                              <div className="p-3 rounded-lg bg-background/80 border border-border/50 text-xs space-y-1.5">
+                                {entry.supervisorComment && (
+                                  <div className="text-muted-foreground">
+                                    <span className="font-semibold text-foreground">Workplace Mentor Feedback: </span>
+                                    <span>"{entry.supervisorComment}"</span>
+                                  </div>
+                                )}
+                                {entry.lecturerComment && (
+                                  <div className="text-muted-foreground">
+                                    <span className="font-semibold text-[#003366] dark:text-[#ff8c00]">Your Academic Comment: </span>
+                                    <span>"{entry.lecturerComment}"</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <Button
+                                size="sm"
+                                variant={isLecturerApproved ? "outline" : "default"}
+                                onClick={() => handleOpenReview(entry, selectedStudent)}
+                                className={`text-xs h-8 ${
+                                  isLecturerApproved
+                                    ? ""
+                                    : "bg-[#003366] hover:bg-[#002244] dark:bg-[#ff8c00] dark:hover:bg-[#e07b00] text-white"
+                                }`}
+                              >
+                                {isLecturerApproved ? "Update Review" : "Review & Sign Off"}
+                              </Button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-border/60 shadow-xs">
+                <CardContent className="py-20 text-center space-y-2">
+                  <UserCheck className="w-10 h-10 mx-auto text-muted-foreground/40" />
+                  <p className="text-sm font-semibold text-foreground">Select a student candidate</p>
+                  <p className="text-xs text-muted-foreground">
+                    Choose an intern from the roster on the left to inspect their weekly logbook submissions.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Lecturer Review Dialog */}
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent className="max-w-md bg-card border-border/80">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <GraduationCap className="w-5 h-5 text-[#003366] dark:text-[#ff8c00]" />
+              Academic Logbook Sign-off: Week {selectedEntry?.week}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Candidate: <strong>{selectedEntry?.studentName}</strong> ({selectedEntry?.studentReg})
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Academic Feedback & Instructions</Label>
+              <Textarea
+                placeholder="Provide constructive academic evaluation or corrective guidance on these weekly tasks..."
+                value={reviewComment}
+                onChange={(e) => setReviewComment(e.target.value)}
+                rows={4}
+                className="text-xs resize-none"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
-              onClick={handleGrantExtension}
-              disabled={updateDeadline.isPending || !newDueDate}
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              variant="outline"
+              size="sm"
+              onClick={() => handleSubmitReview(false)}
+              disabled={isSubmittingReview}
+              className="text-xs h-9"
             >
-              {updateDeadline.isPending ? (
+              Save Feedback Only
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleSubmitReview(true)}
+              disabled={isSubmittingReview}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium text-xs h-9 shadow-xs"
+            >
+              {isSubmittingReview ? (
                 <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Extending...
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Signing Off...
                 </>
               ) : (
                 <>
-                  <Clock className="w-4 h-4 mr-2" />
-                  Grant Extension
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                  Approve & Sign Off
                 </>
               )}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </motion.div>
   );
 }

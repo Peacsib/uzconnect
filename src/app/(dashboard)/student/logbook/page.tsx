@@ -1,378 +1,506 @@
 "use client";
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect, useCallback } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { Plus, FileDown, Lock, CalendarIcon, Loader2, AlertTriangle, MessageSquare, Clock } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { cn } from "@/lib/utils";
-import { format, parseISO, differenceInDays } from "date-fns";
-import { getStatusColor } from "@/utils/formatters";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import LogbookPDF from "@/components/pdf/LogbookPDF";
-import { usePlacements, useLogbookEntries, useCreateLogbookEntry, useSubmitLogbookEntry } from "@/hooks/useApi";
+import { 
+  Plus, 
+  FileDown, 
+  Calendar as CalendarIcon, 
+  Loader2, 
+  CheckCircle2, 
+  Clock, 
+  MessageSquare, 
+  UserCheck, 
+  GraduationCap, 
+  BookOpen, 
+  Building2,
+  RefreshCw
+} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { format, parseISO } from "date-fns";
 
 export default function Logbook() {
   const { user } = useAuth();
   
-  // Fetch data from API
-  const { data: placements, isLoading: placementsLoading } = usePlacements();
-  const { data: logbookEntries, isLoading: entriesLoading } = useLogbookEntries();
-  const createEntry = useCreateLogbookEntry();
-  const submitEntry = useSubmitLogbookEntry();
+  const [data, setData] = useState<{ placement: any; entries: any[] } | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [viewCommentDialog, setViewCommentDialog] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<any>(null);
-  const [weekEndDate, setWeekEndDate] = useState<Date>();
+  
+  // Form State
+  const [weekNumber, setWeekNumber] = useState(1);
+  const [weekEndDate, setWeekEndDate] = useState(new Date().toISOString().split("T")[0]);
   const [objectives, setObjectives] = useState("");
   const [actualTasks, setActualTasks] = useState("");
   const [reflection, setReflection] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const isLoading = placementsLoading || entriesLoading;
-  
-  // Filter data for current student
-  const myPlacement = placements?.find((p) => p.student_id === user?.id);
-  const entries = logbookEntries?.filter((e) => e.student_id === user?.id).sort((a, b) => a.week - b.week) || [];
+  const fetchData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const email = user?.email || "";
+      const res = await fetch(`/api/student/logbook${email ? `?email=${encodeURIComponent(email)}` : ""}`);
+      const json = await res.json();
+      if (json.success) {
+        setData(json);
+        // default next week number
+        if (json.entries && json.entries.length > 0) {
+          const maxWeek = Math.max(...json.entries.map((e: any) => e.week));
+          setWeekNumber(maxWeek + 1);
+        }
+      } else {
+        toast.error(json.error || "Failed to load logbook");
+      }
+    } catch {
+      toast.error("Network error loading logbook entries");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [user?.email]);
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-[#ff8c00]" />
-      </div>
-    );
-  }
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  if (!myPlacement || myPlacement.status !== "active") {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-2xl font-bold">Logbook</h1>
-        <Card>
-          <CardContent className="pt-6 text-center space-y-3">
-            <Lock className="w-12 h-12 text-muted-foreground mx-auto" />
-            <p className="text-lg font-medium">Logbook not available</p>
-            <p className="text-sm text-muted-foreground">Your placement must be confirmed by your supervisor before you can access the logbook.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await fetchData();
+    setIsRefreshing(false);
+    toast.success("Logbook synchronized with academic roster");
+  };
 
-  const handleSubmit = async () => {
-    if (!weekEndDate || !objectives.trim() || !actualTasks.trim() || !reflection.trim()) {
-      toast.error("Please fill all fields");
+  const handleOpenNewEntry = () => {
+    const existingWeeks = data?.entries?.map((e: any) => e.week) || [];
+    let nextW = 1;
+    while (existingWeeks.includes(nextW)) nextW++;
+    setWeekNumber(nextW);
+    setWeekEndDate(new Date().toISOString().split("T")[0]);
+    setObjectives("");
+    setActualTasks("");
+    setReflection("");
+    setDialogOpen(true);
+  };
+
+  const handleSaveEntry = async (status: "DRAFT" | "SUBMITTED") => {
+    if (!objectives || !actualTasks) {
+      toast.error("Please fill in key objectives and actual tasks completed.");
       return;
     }
 
     try {
-      await createEntry.mutateAsync({
-        week: entries.length + 1,
-        week_ending_date: format(weekEndDate, "yyyy-MM-dd"),
-        objectives: objectives.trim(),
-        actual_tasks: actualTasks.trim(),
-        reflection: reflection.trim(),
+      setIsSubmitting(true);
+      const res = await fetch("/api/student/logbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          placementId: data?.placement?.id,
+          email: user?.email,
+          week: weekNumber,
+          weekEndingDate: weekEndDate,
+          objectives,
+          actualTasks,
+          reflection,
+          status,
+        }),
       });
-      
-      setDialogOpen(false);
-      setObjectives("");
-      setActualTasks("");
-      setReflection("");
-      setWeekEndDate(undefined);
-    } catch (error) {
-      // Error toast is handled by the hook
-      console.error("Failed to create logbook entry:", error);
-    }
-  };
+      const json = await res.json();
 
-  const handleSubmitForApproval = async (entryId: string, dueDate?: string) => {
-    // Check if deadline has passed
-    if (dueDate) {
-      const deadline = new Date(dueDate);
-      const now = new Date();
-      if (now > deadline) {
-        toast.error("Deadline has passed. Please contact your lecturer for an extension.");
-        return;
+      if (json.success) {
+        toast.success(status === "SUBMITTED" ? `Week ${weekNumber} logbook submitted to mentors!` : `Week ${weekNumber} draft saved.`);
+        setDialogOpen(false);
+        await fetchData();
+      } else {
+        toast.error(json.error || "Failed to save logbook entry");
       }
-    }
-
-    try {
-      await submitEntry.mutateAsync(entryId);
-    } catch (error) {
-      // Error handled by hook
+    } catch {
+      toast.error("Network error saving logbook entry");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleViewComment = (entry: any) => {
+  const handleViewComments = (entry: any) => {
     setSelectedEntry(entry);
     setViewCommentDialog(true);
   };
 
-  const getDeadlineWarning = (dueDate?: string, status?: string) => {
-    if (!dueDate || status === 'approved' || status === 'pending_supervisor' || status === 'pending_lecturer') {
-      return null;
-    }
+  if (isLoading && !data) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-[#003366] dark:text-[#ff8c00]" />
+        <p className="text-xs text-muted-foreground font-medium">Loading your weekly logbook...</p>
+      </div>
+    );
+  }
 
-    const deadline = new Date(dueDate);
-    const now = new Date();
-    const daysUntil = differenceInDays(deadline, now);
-
-    if (daysUntil < 0) {
-      return (
-        <div className="flex items-center gap-1 text-red-600 text-xs">
-          <AlertTriangle className="w-3 h-3" />
-          <span>Overdue by {Math.abs(daysUntil)} day{Math.abs(daysUntil) !== 1 ? 's' : ''}</span>
-        </div>
-      );
-    } else if (daysUntil <= 2) {
-      return (
-        <div className="flex items-center gap-1 text-orange-600 text-xs">
-          <Clock className="w-3 h-3" />
-          <span>Due in {daysUntil} day{daysUntil !== 1 ? 's' : ''}</span>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const pdfFileName = `Logbook_${user?.name?.replace(/\s+/g, "_")}.pdf`;
+  const entries = data?.entries || [];
+  const placement = data?.placement;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-2xl font-bold">Logbook</h1>
-        <div className="flex gap-2">
-          <PDFDownloadLink
-            document={
-              <LogbookPDF
-                studentName={user?.name || ""}
-                regNumber={user?.reg_number || user?.email?.split("@")[0] || ""}
-                faculty="Science"
-                department="Computer Science"
-                hostInstitution="Placement Company"
-                supervisorName="Supervisor"
-                entries={entries.map(e => ({
-                  id: e.id,
-                  studentId: e.student_id,
-                  week: e.week,
-                  weekEndingDate: e.week_ending_date || e.weekEndingDate || "",
-                  objectives: e.objectives,
-                  actualTasks: e.actual_tasks || e.actualTasks || "",
-                  reflection: e.reflection,
-                  status: e.status,
-                  supervisorApproved: e.supervisor_approved,
-                }))}
-              />
-            }
-            fileName={pdfFileName}
+    <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 max-w-5xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <BookOpen className="w-7 h-7 text-[#003366] dark:text-[#ff8c00]" />
+            Industrial Work Logbook
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Weekly task documentation, reflection entries, and official tripartite sign-offs.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="text-xs h-9"
           >
-            {({ loading }) => (
-              <Button variant="outline" size="sm" disabled={loading}>
-                <FileDown className="w-4 h-4 mr-1" />{loading ? "Generating…" : "Export PDF"}
-              </Button>
-            )}
-          </PDFDownloadLink>
-          <Button onClick={() => setDialogOpen(true)} className="bg-primary text-primary-foreground">
-            <Plus className="w-4 h-4 mr-2" />New Entry
+            <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+          <Button
+            size="sm"
+            onClick={handleOpenNewEntry}
+            disabled={!placement}
+            className="bg-[#003366] hover:bg-[#002244] dark:bg-[#ff8c00] dark:hover:bg-[#e07b00] text-white text-xs h-9 shadow-xs"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            New Week Entry
           </Button>
         </div>
       </div>
 
-      {/* Header info matching UZ format */}
-      <Card>
-        <CardContent className="pt-4 pb-3">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 text-sm">
-            <div><span className="text-muted-foreground">Faculty:</span> <span className="font-medium">Science</span></div>
-            <div><span className="text-muted-foreground">Department:</span> <span className="font-medium">Computer Science</span></div>
-            <div><span className="text-muted-foreground">Student:</span> <span className="font-medium">{user?.name}</span></div>
-            <div><span className="text-muted-foreground">Reg No:</span> <span className="font-medium font-mono">{user?.reg_number || user?.email?.split("@")[0]}</span></div>
-            <div><span className="text-muted-foreground">Placement:</span> <span className="font-medium">{myPlacement.status}</span></div>
-            <div><span className="text-muted-foreground">Entries:</span> <span className="font-medium">{entries.length}</span></div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Tripartite Attachment Status Banner */}
+      {placement ? (
+        <Card className="border-border/60 shadow-xs bg-muted/20">
+          <CardContent className="p-4 sm:p-5">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#003366]/10 dark:bg-blue-500/10 flex items-center justify-center text-[#003366] dark:text-blue-400 shrink-0">
+                  <Building2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="font-bold text-sm text-foreground">{placement.companyName}</div>
+                  <div className="text-muted-foreground mt-0.5">Accredited Industrial Attachment Organization</div>
+                </div>
+              </div>
 
-      {/* Logbook table */}
-      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-        <Card>
-          <CardContent className="p-0">
+              <div className="flex items-center gap-6 flex-wrap pt-2 md:pt-0 border-t md:border-t-0 border-border/40">
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Workplace Mentor</span>
+                  <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    {placement.supervisorName}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">University Assessor</span>
+                  <span className="font-semibold text-foreground flex items-center gap-1 mt-0.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    {placement.lecturerName || "Assigned by Department"}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card className="border-border/60 shadow-xs">
+          <CardContent className="py-8 text-center text-xs text-muted-foreground">
+            You do not currently have an active accredited placement. Please submit your placement details for Coordinator verification.
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Logbook Entries Table */}
+      <Card className="border-border/60 shadow-xs overflow-hidden">
+        <CardHeader className="border-b border-border/40 pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-[#003366] dark:text-[#ff8c00]" />
+              Weekly Attachment Records
+            </CardTitle>
+            <span className="text-xs text-muted-foreground font-mono">
+              {entries.length} {entries.length === 1 ? "Week Logged" : "Weeks Logged"}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {entries.length === 0 ? (
+            <div className="py-16 text-center space-y-3">
+              <BookOpen className="w-10 h-10 mx-auto text-muted-foreground/40" />
+              <div className="space-y-1">
+                <p className="text-sm font-semibold text-foreground">No weekly logbook entries recorded</p>
+                <p className="text-xs text-muted-foreground">Click "New Week Entry" above to log your first week on attachment.</p>
+              </div>
+              <Button size="sm" onClick={handleOpenNewEntry} disabled={!placement} className="text-xs mt-2">
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Log Week 1
+              </Button>
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/40">
                   <TableRow>
-                    <TableHead className="w-[70px]">Week</TableHead>
-                    <TableHead className="w-[110px]">Week Ending</TableHead>
-                    <TableHead className="w-[110px]">Due Date</TableHead>
-                    <TableHead>Objectives for the week / To-do list (As approved by supervisor)</TableHead>
-                    <TableHead>Actual completed tasks / outcomes</TableHead>
-                    <TableHead>Introspection and reflective comments</TableHead>
-                    <TableHead className="w-[120px]">Status</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="w-[100px] font-semibold text-xs">Period</TableHead>
+                    <TableHead className="font-semibold text-xs">Summary of Tasks & Objectives</TableHead>
+                    <TableHead className="font-semibold text-xs">Mentor Sign-off</TableHead>
+                    <TableHead className="font-semibold text-xs">Academic Approval</TableHead>
+                    <TableHead className="text-right font-semibold text-xs">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {entries.map((entry) => {
-                    const canSubmit = entry.status === 'draft' || entry.status === 'rejected';
-                    const isOverdue = entry.due_date && new Date(entry.due_date) < new Date() && entry.status === 'draft';
-                    const hasComment = entry.supervisor_comment;
+                  {entries.map((entry: any) => {
+                    const hasComments = Boolean(entry.supervisorComment || entry.lecturerComment);
 
                     return (
-                      <TableRow key={entry.id}>
-                        <TableCell className="font-medium text-center">{entry.week}</TableCell>
-                        <TableCell className="text-sm">{format(parseISO(entry.week_ending_date || entry.weekEndingDate || new Date().toISOString()), "dd MMM yyyy")}</TableCell>
-                        <TableCell className="text-sm">
-                          {entry.due_date ? (
-                            <div className="space-y-1">
-                              <div className={isOverdue ? "text-red-600 font-medium" : ""}>
-                                {format(parseISO(entry.due_date), "dd MMM yyyy")}
-                              </div>
-                              {getDeadlineWarning(entry.due_date, entry.status)}
-                            </div>
-                          ) : (
-                            <span className="text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-3">{entry.objectives}</p></TableCell>
-                        <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-3">{entry.actual_tasks}</p></TableCell>
-                        <TableCell className="text-sm max-w-[200px]"><p className="line-clamp-3">{entry.reflection}</p></TableCell>
+                      <TableRow key={entry.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell>
-                          <div className="space-y-1">
-                            <Badge variant="outline" className={`text-xs ${getStatusColor(entry.status)}`}>{entry.status}</Badge>
-                            {hasComment && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleViewComment(entry)}
-                                className="h-6 px-2 text-xs text-blue-600 hover:text-blue-700"
-                              >
-                                <MessageSquare className="w-3 h-3 mr-1" />
-                                View comment
-                              </Button>
-                            )}
+                          <div className="font-bold text-sm text-foreground">Week {entry.week}</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">
+                            {entry.weekEndingDate ? format(parseISO(entry.weekEndingDate), "PP") : "Active"}
                           </div>
                         </TableCell>
+
+                        <TableCell className="max-w-md">
+                          <div className="text-xs font-semibold text-foreground line-clamp-1">
+                            {entry.objectives}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5">
+                            {entry.actualTasks}
+                          </div>
+                        </TableCell>
+
                         <TableCell>
-                          {canSubmit && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleSubmitForApproval(entry.id, entry.due_date)}
-                              disabled={Boolean(submitEntry.isPending || isOverdue)}
-                              className="w-full"
-                            >
-                              {submitEntry.isPending ? (
-                                <Loader2 className="w-3 h-3 animate-spin" />
-                              ) : (
-                                "Submit"
-                              )}
-                            </Button>
+                          {entry.supervisorApproved ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-semibold">
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Approved
+                            </Badge>
+                          ) : entry.status === "SUBMITTED" ? (
+                            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px]">
+                              <Clock className="w-3 h-3 mr-1" /> Submitted
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground text-[10px]">Draft</Badge>
                           )}
+                        </TableCell>
+
+                        <TableCell>
+                          {entry.lecturerApproved ? (
+                            <Badge className="bg-emerald-600 text-white text-[10px] font-semibold">
+                              <CheckCircle2 className="w-3 h-3 mr-1" /> Approved
+                            </Badge>
+                          ) : entry.status === "SUBMITTED" ? (
+                            <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/30 text-[10px]">
+                              <Clock className="w-3 h-3 mr-1" /> Under Review
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-muted-foreground text-[10px]">Draft</Badge>
+                          )}
+                        </TableCell>
+
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewComments(entry)}
+                            className="h-8 text-xs gap-1"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5" />
+                            {hasComments ? "View Feedback" : "View Entry"}
+                          </Button>
                         </TableCell>
                       </TableRow>
                     );
                   })}
-                  {entries.length === 0 && (
-                    <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No entries yet. Click "New Entry" to start.</TableCell></TableRow>
-                  )}
                 </TableBody>
               </Table>
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <p className="text-xs text-muted-foreground italic">This document must be signed and stamped monthly, and maintained in both hardcopy and softcopy formats.</p>
-
-      {/* New entry dialog */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>New Logbook Entry — Week {entries.length + 1}</DialogTitle></DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Week Ending Date *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !weekEndDate && "text-muted-foreground")}>
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {weekEndDate ? format(weekEndDate, "PPP") : "Pick a date"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar mode="single" selected={weekEndDate} onSelect={setWeekEndDate}  className="p-3 pointer-events-auto" />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div>
-              <Label>Objectives for the week / To-do list *</Label>
-              <Textarea rows={3} value={objectives} onChange={(e) => setObjectives(e.target.value)} placeholder="What were your planned objectives (as approved by supervisor)?" />
-            </div>
-            <div>
-              <Label>Actual completed tasks / outcomes *</Label>
-              <Textarea rows={3} value={actualTasks} onChange={(e) => setActualTasks(e.target.value)} placeholder="What did you actually accomplish this week?" />
-            </div>
-            <div>
-              <Label>Introspection and reflective comments *</Label>
-              <Textarea rows={3} value={reflection} onChange={(e) => setReflection(e.target.value)} placeholder="Reflect on lessons learnt, variance between objectives and outcomes..." />
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
-              <Button 
-                onClick={handleSubmit} 
-                className="bg-primary text-primary-foreground"
-                disabled={createEntry.isPending}
-              >
-                {createEntry.isPending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  "Save Entry"
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* View Comment Dialog */}
-      <Dialog open={viewCommentDialog} onOpenChange={setViewCommentDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Supervisor Comment - Week {selectedEntry?.week}</DialogTitle>
-          </DialogHeader>
-          {selectedEntry && (
-            <div className="space-y-4">
-              <div className="bg-muted/50 p-4 rounded-md">
-                <Label className="text-muted-foreground flex items-center gap-1 mb-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Comment
-                </Label>
-                <p className="text-sm whitespace-pre-wrap">{selectedEntry.supervisor_comment}</p>
-              </div>
-              <div>
-                <Label className="text-muted-foreground">Status</Label>
-                <div className="mt-1">
-                  <Badge variant="outline" className={getStatusColor(selectedEntry.status)}>
-                    {selectedEntry.status}
-                  </Badge>
-                </div>
-              </div>
-            </div>
           )}
-          <div className="flex justify-end">
-            <Button variant="outline" onClick={() => setViewCommentDialog(false)}>Close</Button>
+        </CardContent>
+      </Card>
+
+      {/* New Logbook Entry Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-lg bg-card border-border/80">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-[#003366] dark:text-[#ff8c00]" />
+              Record Logbook: Week {weekNumber}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Document your weekly learning objectives, technical duties performed, and reflective self-evaluation.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Week Number</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={36}
+                  value={weekNumber}
+                  onChange={(e) => setWeekNumber(Number(e.target.value))}
+                  className="h-9 text-xs font-mono"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Week Ending Date</Label>
+                <Input
+                  type="date"
+                  value={weekEndDate}
+                  onChange={(e) => setWeekEndDate(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Weekly Objectives *</Label>
+              <Textarea
+                placeholder="What technical and professional goals were planned for this week?"
+                value={objectives}
+                onChange={(e) => setObjectives(e.target.value)}
+                rows={2}
+                className="text-xs resize-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Actual Tasks & Projects Completed *</Label>
+              <Textarea
+                placeholder="Detail the technical tasks, code authored, tickets closed, systems maintained..."
+                value={actualTasks}
+                onChange={(e) => setActualTasks(e.target.value)}
+                rows={3}
+                className="text-xs resize-none"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Student Reflection & Competency Acquisition</Label>
+              <Textarea
+                placeholder="What challenges did you resolve? What industry skills did you sharpen?"
+                value={reflection}
+                onChange={(e) => setReflection(e.target.value)}
+                rows={2}
+                className="text-xs resize-none"
+              />
+            </div>
           </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleSaveEntry("DRAFT")}
+              disabled={isSubmitting}
+              className="text-xs h-9"
+            >
+              Save as Draft
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => handleSaveEntry("SUBMITTED")}
+              disabled={isSubmitting}
+              className="bg-[#003366] hover:bg-[#002244] dark:bg-[#ff8c00] dark:hover:bg-[#e07b00] text-white text-xs h-9 shadow-xs font-medium"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                  Submit for Approval
+                </>
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+
+      {/* View Comments / Entry Details Dialog */}
+      <Dialog open={viewCommentDialog} onOpenChange={setViewCommentDialog}>
+        <DialogContent className="max-w-md bg-card border-border/80">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-[#003366] dark:text-[#ff8c00]" />
+              Week {selectedEntry?.week} Logbook Details & Feedback
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Official tripartite review notes from your workplace mentor and university academic assessor.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3.5 py-2 text-xs">
+            <div className="p-3 rounded-lg bg-muted/20 border border-border/50 space-y-1.5">
+              <span className="font-semibold text-foreground block">Key Tasks Logged:</span>
+              <p className="text-muted-foreground leading-relaxed">{selectedEntry?.actualTasks || "No tasks recorded."}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="p-3 rounded-lg border border-border/60 bg-muted/10 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    Workplace Mentor Sign-off
+                  </span>
+                  {selectedEntry?.supervisorApproved ? (
+                    <Badge className="bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-[10px]">Approved</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px]">Pending</Badge>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-[11px] pt-1">
+                  {selectedEntry?.supervisorComment ? `"${selectedEntry.supervisorComment}"` : "No feedback comment added yet."}
+                </p>
+              </div>
+
+              <div className="p-3 rounded-lg border border-border/60 bg-muted/10 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <GraduationCap className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    Academic Lecturer Sign-off
+                  </span>
+                  {selectedEntry?.lecturerApproved ? (
+                    <Badge className="bg-emerald-600 text-white text-[10px]">Approved</Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px]">Under Review</Badge>
+                  )}
+                </div>
+                <p className="text-muted-foreground text-[11px] pt-1">
+                  {selectedEntry?.lecturerComment ? `"${selectedEntry.lecturerComment}"` : "No academic feedback added yet."}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setViewCommentDialog(false)} className="text-xs h-9">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </motion.div>
   );
 }
