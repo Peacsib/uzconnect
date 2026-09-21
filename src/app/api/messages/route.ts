@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { getAuthorizedContactsForUser } from "@/app/api/messages/contacts/route";
 
 export async function GET(request: Request) {
   try {
@@ -19,11 +20,15 @@ export async function GET(request: Request) {
       return NextResponse.json({ success: true, messages: [] });
     }
 
+    // Get authorized contacts to strictly scope conversation history
+    const authorizedContacts = await getAuthorizedContactsForUser(user.id);
+    const authorizedIds = new Set(authorizedContacts.map((c) => c.id));
+
     const messages = await prisma.message.findMany({
       where: {
         OR: [
-          { senderId: user.id },
-          { receiverId: user.id },
+          { senderId: user.id, receiverId: { in: Array.from(authorizedIds) } },
+          { receiverId: user.id, senderId: { in: Array.from(authorizedIds) } },
         ],
       },
       include: {
@@ -66,6 +71,20 @@ export async function POST(request: Request) {
 
     if (!receiverId || !content) {
       return NextResponse.json({ success: false, error: "Recipient and message content are required" }, { status: 400 });
+    }
+
+    // Enforce strict communication boundaries
+    const authorizedContacts = await getAuthorizedContactsForUser(sender.id);
+    const isAuthorized = authorizedContacts.some((c) => c.id === receiverId);
+
+    if (!isAuthorized) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "Unauthorized: Communication is strictly restricted to your assigned tripartite supervision contacts." 
+        }, 
+        { status: 403 }
+      );
     }
 
     const receiver = await prisma.user.findUnique({ where: { id: receiverId } });

@@ -138,11 +138,11 @@ export default function MessagesPage() {
       case "COORDINATOR":
         return <Badge className="bg-[#003366] text-white text-[10px] px-1.5 py-0 font-medium">Coordinator</Badge>;
       case "LECTURER":
-        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 text-[10px] px-1.5 py-0 font-medium">Lecturer</Badge>;
+        return <Badge className="bg-[#003366]/10 text-[#003366] dark:bg-blue-950 dark:text-blue-300 text-[10px] px-1.5 py-0 font-semibold border border-[#003366]/20">Lecturer</Badge>;
       case "SUPERVISOR":
-        return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] px-1.5 py-0 font-medium">Supervisor</Badge>;
+        return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 text-[10px] px-1.5 py-0 font-semibold">Supervisor</Badge>;
       case "STUDENT":
-        return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 text-[10px] px-1.5 py-0 font-medium">Student</Badge>;
+        return <Badge className="bg-[#ff8c00]/15 text-[#b35900] dark:text-[#ffa726] text-[10px] px-1.5 py-0 font-semibold border border-[#ff8c00]/30">Student</Badge>;
       default:
         return null;
     }
@@ -157,7 +157,7 @@ export default function MessagesPage() {
             Official WRL Communications
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Encrypted institutional messaging between student interns, coordinators, academic lecturers, and workplace supervisors.
+            Secure tripartite messaging strictly scoped to your assigned academic supervisor, industry mentor, and WRL coordinator.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => { fetchContacts(); fetchMessages(); }} className="text-xs h-8">
