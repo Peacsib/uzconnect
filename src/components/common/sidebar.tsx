@@ -89,13 +89,7 @@ export function AppSidebar({ open, onClose }: SidebarProps) {
   const role = user?.role || (pathname.startsWith("/supervisor") ? "supervisor" : pathname.startsWith("/lecturer") ? "lecturer" : pathname.startsWith("/coordinator") ? "coordinator" : "student")
   const items = getNavItems(role, user?.id)
 
-  const initials = (user?.name || "User")
-    .split(" ")
-    .map((n) => n[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase()
-
+  
   return (
     <>
       {open && <div className="fixed inset-0 bg-foreground/20 z-40 lg:hidden" onClick={onClose} />}
@@ -125,23 +119,7 @@ export function AppSidebar({ open, onClose }: SidebarProps) {
           })}
         </nav>
 
-        {/* The Forge Style Bottom User Card */}
-        <div className="p-3 border-t border-sidebar-border/70 bg-sidebar/50">
-          <div className="flex items-center gap-2.5 px-2 py-1.5">
-            <div className="w-8 h-8 rounded-full bg-[#003366]/15 text-[#003366] dark:bg-blue-900/30 dark:text-blue-300 font-bold text-xs flex items-center justify-center shrink-0">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-foreground truncate leading-tight">
-                {user?.name || "User"}
-              </p>
-              <p className="text-[10px] text-muted-foreground capitalize truncate">
-                {user?.role?.toLowerCase() || "Member"}
-              </p>
-            </div>
-          </div>
-        </div>
-      </aside>
+        </aside>
     </>
   )
 }
