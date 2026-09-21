@@ -8,8 +8,6 @@ import {
   Trash2, 
   RefreshCw, 
   ExternalLink, 
-  FileDown, 
-  FileSpreadsheet, 
   Maximize2, 
   MoreVertical, 
   Clock, 
@@ -38,7 +36,6 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { exportToPDF, exportToExcel } from "@/utils/exportUtils";
 
 interface NotificationRecord {
   id: string;
@@ -413,26 +410,8 @@ function NotificationsContent() {
                   </p>
                 </div>
 
-                {/* Utility Export and Action Icons (Right Corner) */}
+                {/* Action Icons (Right Corner) */}
                 <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => exportToExcel("Notification_Export", ["Title", "Date", "Message"], [[selectedNotif.title, selectedNotif.createdAt, selectedNotif.message]])}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Export to Excel"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => exportToPDF("Official_Institutional_Notice", ["Subject", "Date", "Content"], [[selectedNotif.title, selectedNotif.createdAt, selectedNotif.message]])}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
-                    title="Export to PDF"
-                  >
-                    <FileDown className="w-4 h-4" />
-                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"

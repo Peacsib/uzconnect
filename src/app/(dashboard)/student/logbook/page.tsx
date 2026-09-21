@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format, parseISO } from "date-fns";
+import LogbookDownloadButton from "@/components/pdf/LogbookDownloadButton";
 
 export default function Logbook() {
   const { user } = useAuth();
@@ -172,6 +173,30 @@ export default function Logbook() {
             <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </Button>
+          {entries.length > 0 && (
+            <LogbookDownloadButton
+              studentName={placement?.studentName || user?.name || "Student"}
+              regNumber={placement?.regNumber || (user as any)?.regNumber || (user as any)?.reg_number || ""}
+              faculty={placement?.faculty || "Faculty of Science and Technology"}
+              department={placement?.department || "Department of Computer Science"}
+              programme={placement?.programme || "BSc Computer Science Honours"}
+              hostInstitution={placement?.companyName || "Host Organization"}
+              supervisorName={placement?.supervisorName || "Workplace Supervisor"}
+              lecturerName={placement?.lecturerName || "Academic Supervisor"}
+              entries={entries.map((e: any) => ({
+                week: e.week,
+                weekEndingDate: e.weekEndingDate || e.week_ending_date || "",
+                objectives: e.objectives || "",
+                actualTasks: e.actualTasks || e.actual_tasks || "",
+                reflection: e.reflection || "",
+                status: e.status || "draft",
+                supervisorComment: e.supervisorComment || e.supervisor_comment,
+                supervisorApproved: e.supervisorApproved ?? e.supervisor_approved,
+                lecturerApproved: e.lecturerApproved ?? e.lecturer_approved,
+              }))}
+              buttonText="Download Marked Logbook (PDF)"
+            />
+          )}
           <Button
             size="sm"
             onClick={handleOpenNewEntry}

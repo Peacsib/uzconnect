@@ -21,6 +21,13 @@ export async function GET(request: Request) {
       },
       include: {
         user: true,
+        programme: {
+          include: {
+            department: {
+              include: { faculty: true },
+            },
+          },
+        },
         placements: {
           where: { status: "ACTIVE" },
           orderBy: { createdAt: "desc" },
@@ -55,10 +62,15 @@ export async function GET(request: Request) {
       success: true,
       placement: {
         id: placement.id,
+        studentName: student.user.name,
+        regNumber: student.regNumber,
+        faculty: student.programme?.department?.faculty?.name || "Faculty of Science and Technology",
+        department: student.programme?.department?.name || "Department of Computer Science",
+        programme: student.programme?.name || "BSc Computer Science Honours",
         companyName: placement.company.name,
-        supervisorName: placement.supervisor.user.name,
-        supervisorEmail: placement.supervisor.user.email,
-        lecturerName: placement.lecturer?.user?.name || null,
+        supervisorName: placement.supervisor?.user?.name || "Workplace Supervisor",
+        supervisorEmail: placement.supervisor?.user?.email || null,
+        lecturerName: placement.lecturer?.user?.name || "Academic Supervisor",
         lecturerEmail: placement.lecturer?.user?.email || null,
         startDate: placement.startDate,
         endDate: placement.endDate,

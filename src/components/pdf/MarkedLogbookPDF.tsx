@@ -16,160 +16,198 @@ export interface MarkedLogbookEntry {
 export interface MarkedLogbookPDFProps {
   studentName: string;
   regNumber: string;
-  faculty: string;
-  department: string;
-  programme: string;
-  hostInstitution: string;
-  supervisorName: string;
-  lecturerName: string;
+  faculty?: string;
+  department?: string;
+  programme?: string;
+  hostInstitution?: string;
+  supervisorName?: string;
+  lecturerName?: string;
   entries: MarkedLogbookEntry[];
   generatedDate?: string;
 }
 
 // Cloudinary CDN URL for optimized UZ crest
 const UZ_CREST = "https://res.cloudinary.com/dqbairwkx/image/upload/f_auto,q_auto,w_200/wrl-connect/static/uz-crest";
-const BLUE = "#1a5276";
+const NAVY = "#003366"; // Official UZ Royal Navy
+const GOLD = "#ff8c00"; // Official UZ Amber Gold
 const GREEN = "#27ae60";
 const RED = "#e74c3c";
 
 const s = StyleSheet.create({
-  page: { padding: 30, fontSize: 9, fontFamily: "Helvetica", lineHeight: 1.4 },
+  page: { padding: 28, fontSize: 8.5, fontFamily: "Helvetica", lineHeight: 1.35, color: "#1a1a1a" },
   bold: { fontFamily: "Helvetica-Bold" },
-  blue: { color: BLUE },
+  navy: { color: NAVY },
 
   // Header
-  crest: { width: 50, height: 50, alignSelf: "center", marginBottom: 4 },
-  uniName: { fontSize: 12, fontFamily: "Helvetica-Bold", textAlign: "center", color: BLUE, marginBottom: 2 },
-  title: { fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "center", color: BLUE, marginBottom: 10 },
+  crest: { width: 46, height: 46, alignSelf: "center", marginBottom: 3 },
+  uniName: { fontSize: 12, fontFamily: "Helvetica-Bold", textAlign: "center", color: NAVY, marginBottom: 2, letterSpacing: 0.5 },
+  title: { fontSize: 10, fontFamily: "Helvetica-Bold", textAlign: "center", color: NAVY, marginBottom: 8 },
 
   // Detail rows
-  detailRow: { flexDirection: "row", marginBottom: 5 },
-  detailLabel: { fontFamily: "Helvetica-Bold", color: BLUE, marginRight: 4, fontSize: 8 },
+  detailRow: { flexDirection: "row", marginBottom: 4 },
+  detailLabel: { fontFamily: "Helvetica-Bold", color: NAVY, marginRight: 4, fontSize: 8, width: 95 },
   detailValue: {
     flex: 1,
     borderBottomWidth: 0.8,
-    borderBottomColor: "#000",
-    borderBottomStyle: "dashed" as const,
+    borderBottomColor: "#cbd5e1",
     paddingBottom: 1,
     fontSize: 8,
+    color: "#0f172a",
   },
   detailHalf: { flexDirection: "row", width: "50%" },
 
-  note: { fontSize: 7, marginTop: 4, marginBottom: 8, fontStyle: "italic", color: BLUE },
-
   // Summary stats
-  summarySection: { marginBottom: 10, padding: 8, backgroundColor: "#f8f9fa", borderRadius: 4 },
-  summaryTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLUE, marginBottom: 4 },
-  summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 2 },
-  summaryLabel: { fontSize: 8, color: "#555" },
-  summaryValue: { fontSize: 8, fontFamily: "Helvetica-Bold" },
+  summarySection: { 
+    marginVertical: 7, 
+    padding: 6, 
+    backgroundColor: "#f8fafc", 
+    borderRadius: 3,
+    borderWidth: 0.8,
+    borderColor: "#e2e8f0" 
+  },
+  summaryTitle: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: NAVY, marginBottom: 3 },
+  summaryRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 1.5 },
+  summaryLabel: { fontSize: 7.5, color: "#475569" },
+  summaryValue: { fontSize: 7.5, fontFamily: "Helvetica-Bold" },
 
   // Table
-  tableBorder: { borderWidth: 1, borderColor: "#000" },
-  tableHeader: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#000", backgroundColor: "#e8f4f8" },
-  tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#000" },
-  cell: { padding: 3, borderRightWidth: 0.5, borderRightColor: "#000", fontSize: 7 },
-  headerCell: { padding: 3, borderRightWidth: 0.5, borderRightColor: "#000", fontSize: 7, fontFamily: "Helvetica-Bold" },
+  tableBorder: { borderWidth: 1, borderColor: NAVY, marginTop: 4 },
+  tableHeader: { 
+    flexDirection: "row", 
+    borderBottomWidth: 1, 
+    borderBottomColor: NAVY, 
+    backgroundColor: "#e8eff7" 
+  },
+  tableRow: { flexDirection: "row", borderBottomWidth: 0.5, borderBottomColor: "#cbd5e1" },
+  cell: { padding: 3, borderRightWidth: 0.5, borderRightColor: "#cbd5e1", fontSize: 6.8 },
+  headerCell: { 
+    padding: 3, 
+    borderRightWidth: 0.5, 
+    borderRightColor: NAVY, 
+    fontSize: 7, 
+    fontFamily: "Helvetica-Bold", 
+    color: NAVY 
+  },
   
   // Status badges
   statusApproved: { color: GREEN, fontFamily: "Helvetica-Bold" },
   statusRejected: { color: RED, fontFamily: "Helvetica-Bold" },
-  statusPending: { color: "#f39c12", fontFamily: "Helvetica-Bold" },
+  statusPending: { color: GOLD, fontFamily: "Helvetica-Bold" },
   
   // Comment section
   commentBox: { 
-    backgroundColor: "#fff9e6", 
-    padding: 4, 
-    marginTop: 2, 
+    backgroundColor: "#fffdf5", 
+    padding: 3, 
+    marginTop: 1.5, 
     borderRadius: 2,
     borderWidth: 0.5,
-    borderColor: "#f39c12",
+    borderColor: "#fde68a",
   },
-  commentLabel: { fontSize: 6, fontFamily: "Helvetica-Bold", color: "#856404", marginBottom: 2 },
-  commentText: { fontSize: 6, color: "#333", fontStyle: "italic" },
+  commentLabel: { fontSize: 5.5, fontFamily: "Helvetica-Bold", color: "#92400e", marginBottom: 1 },
+  commentText: { fontSize: 6, color: "#1e293b", fontStyle: "italic" },
 
   // Signatures
-  sigSection: { marginTop: 12 },
-  sigTitle: { fontSize: 9, fontFamily: "Helvetica-Bold", color: BLUE, marginBottom: 8 },
-  sigRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 10 },
-  sigLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: BLUE, marginRight: 4 },
+  sigSection: { marginTop: 10 },
+  sigTitle: { fontSize: 8.5, fontFamily: "Helvetica-Bold", color: NAVY, marginBottom: 6 },
+  sigRow: { flexDirection: "row", alignItems: "flex-end", marginBottom: 7 },
+  sigLabel: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: NAVY, marginRight: 4, width: 140 },
   sigLine: {
     flex: 1,
     borderBottomWidth: 0.8,
     borderBottomColor: "#000",
     borderBottomStyle: "dashed" as const,
-    height: 12,
-    marginRight: 10,
+    height: 10,
+    marginRight: 12,
   },
-  sigDateLabel: { fontSize: 8, fontFamily: "Helvetica-Bold", color: BLUE, marginRight: 4 },
+  sigDateLabel: { fontSize: 7.5, fontFamily: "Helvetica-Bold", color: NAVY, marginRight: 4 },
   sigDateLine: {
-    width: 80,
+    width: 75,
     borderBottomWidth: 0.8,
     borderBottomColor: "#000",
     borderBottomStyle: "dashed" as const,
-    height: 12,
+    height: 10,
   },
 
   // Bottom section
-  bottomSection: { flexDirection: "row", marginTop: 10, alignItems: "flex-start" },
-  disclaimer: { flex: 1, fontSize: 6, textAlign: "justify", paddingRight: 10, fontStyle: "italic" },
+  bottomSection: { flexDirection: "row", marginTop: 8, alignItems: "flex-start" },
+  disclaimer: { flex: 1, fontSize: 5.8, textAlign: "justify", paddingRight: 10, fontStyle: "italic", color: "#475569" },
   stampBox: {
-    width: 80,
-    height: 60,
-    borderWidth: 1.5,
-    borderColor: "#000",
+    width: 75,
+    height: 52,
+    borderWidth: 1.2,
+    borderColor: NAVY,
     alignItems: "center",
     justifyContent: "center",
   },
-  stampText: { fontSize: 7, color: "#999" },
+  stampText: { fontSize: 6.5, color: "#64748b", textAlign: "center", fontFamily: "Helvetica-Bold" },
 
   // Footer
   footer: { 
     position: "absolute", 
-    bottom: 20, 
-    left: 30, 
-    right: 30, 
+    bottom: 14, 
+    left: 28, 
+    right: 28, 
     fontSize: 6, 
-    color: "#999", 
+    color: "#94a3b8", 
     textAlign: "center",
     borderTopWidth: 0.5,
-    borderTopColor: "#ccc",
-    paddingTop: 4,
+    borderTopColor: "#e2e8f0",
+    paddingTop: 3
   },
 });
+
+function formatDateSafe(dateStr?: string): string {
+  if (!dateStr) return "-";
+  try {
+    const d = typeof dateStr === "string" && dateStr.includes("T") ? parseISO(dateStr) : new Date(dateStr);
+    return isNaN(d.getTime()) ? dateStr : format(d, "dd/MM/yy");
+  } catch {
+    return dateStr || "-";
+  }
+}
 
 export default function MarkedLogbookPDF({
   studentName,
   regNumber,
-  faculty,
-  department,
-  programme,
-  hostInstitution,
-  supervisorName,
-  lecturerName,
-  entries,
+  faculty = "Faculty of Science and Technology",
+  department = "Department of Computer Science",
+  programme = "BSc Computer Science Honours",
+  hostInstitution = "Industrial Attachment Organization",
+  supervisorName = "Workplace Supervisor",
+  lecturerName = "Academic Supervisor",
+  entries = [],
   generatedDate,
 }: MarkedLogbookPDFProps) {
-  // Calculate summary statistics
   const totalEntries = entries.length;
-  const approvedCount = entries.filter(e => e.status === 'approved').length;
-  const rejectedCount = entries.filter(e => e.status === 'rejected').length;
-  const pendingCount = entries.filter(e => 
-    e.status === 'draft' || 
-    e.status === 'submitted' || 
-    e.status === 'pending_supervisor' || 
-    e.status === 'pending_lecturer'
+  const approvedCount = entries.filter((e) => 
+    e.supervisorApproved || 
+    e.lecturerApproved || 
+    (e.status || "").toLowerCase() === "approved"
   ).length;
+  const rejectedCount = entries.filter((e) => (e.status || "").toLowerCase() === "rejected").length;
+  const pendingCount = entries.filter((e) => {
+    const st = (e.status || "").toLowerCase();
+    return st === "draft" || st === "submitted" || st === "pending_supervisor" || st === "pending_lecturer";
+  }).length;
   const completionRate = totalEntries > 0 ? Math.round((approvedCount / totalEntries) * 100) : 0;
 
   const getStatusDisplay = (status: string) => {
-    switch (status) {
-      case 'approved': return { text: 'Approved', style: s.statusApproved };
-      case 'rejected': return { text: 'Rejected', style: s.statusRejected };
-      case 'pending_supervisor': return { text: 'Pending Supervisor', style: s.statusPending };
-      case 'pending_lecturer': return { text: 'Pending Lecturer', style: s.statusPending };
-      case 'draft': return { text: 'Draft', style: s.statusPending };
-      default: return { text: status, style: s.statusPending };
+    const sLower = (status || "").toLowerCase();
+    switch (sLower) {
+      case "approved":
+        return { text: "Approved", style: s.statusApproved };
+      case "rejected":
+        return { text: "Rejected", style: s.statusRejected };
+      case "pending_supervisor":
+        return { text: "Pending Sup.", style: s.statusPending };
+      case "pending_lecturer":
+        return { text: "Pending Lec.", style: s.statusPending };
+      case "submitted":
+        return { text: "Submitted", style: s.statusPending };
+      case "draft":
+        return { text: "Draft", style: s.statusPending };
+      default:
+        return { text: status || "Pending", style: s.statusPending };
     }
   };
 
@@ -179,64 +217,49 @@ export default function MarkedLogbookPDF({
         {/* Header */}
         <Image src={UZ_CREST} style={s.crest} />
         <Text style={s.uniName}>UNIVERSITY OF ZIMBABWE</Text>
-        <Text style={s.title}>
-          Marked Logbook Report - Work-Related Learning
-        </Text>
+        <Text style={s.title}>OFFICIAL INDUSTRIAL LOGBOOK REPORT - WORK-RELATED LEARNING</Text>
 
         {/* Student Details */}
         <View style={s.detailRow}>
           <Text style={s.detailLabel}>Faculty:</Text>
-          <Text style={s.detailValue}>{faculty}</Text>
+          <Text style={s.detailValue}>{faculty || "Faculty of Science and Technology"}</Text>
         </View>
 
         <View style={s.detailRow}>
           <Text style={s.detailLabel}>Department:</Text>
-          <Text style={s.detailValue}>{department}</Text>
+          <Text style={s.detailValue}>{department || "Department of Computer Science"}</Text>
         </View>
 
         <View style={s.detailRow}>
           <Text style={s.detailLabel}>Programme:</Text>
-          <Text style={s.detailValue}>{programme}</Text>
+          <Text style={s.detailValue}>{programme || "BSc Computer Science Honours"}</Text>
         </View>
 
         <View style={s.detailRow}>
           <View style={s.detailHalf}>
             <Text style={s.detailLabel}>Student Name:</Text>
-            <Text style={s.detailValue}>{studentName}</Text>
+            <Text style={s.detailValue}>{studentName || "Student Intern"}</Text>
           </View>
           <View style={[s.detailHalf, { marginLeft: 10 }]}>
-            <Text style={s.detailLabel}>Reg. Number:</Text>
-            <Text style={s.detailValue}>{regNumber}</Text>
+            <Text style={[s.detailLabel, { width: 85 }]}>Reg. Number:</Text>
+            <Text style={s.detailValue}>{regNumber || "UZ"}</Text>
           </View>
         </View>
 
         <View style={s.detailRow}>
           <Text style={s.detailLabel}>Host Institution:</Text>
-          <Text style={s.detailValue}>{hostInstitution}</Text>
+          <Text style={s.detailValue}>{hostInstitution || "Industrial Attachment Organization"}</Text>
         </View>
 
         {/* Summary Statistics */}
         <View style={s.summarySection}>
-          <Text style={s.summaryTitle}>Summary Statistics</Text>
+          <Text style={s.summaryTitle}>Logbook Performance & Review Summary</Text>
           <View style={s.summaryRow}>
-            <Text style={s.summaryLabel}>Total Entries:</Text>
-            <Text style={s.summaryValue}>{totalEntries}</Text>
-          </View>
-          <View style={s.summaryRow}>
-            <Text style={s.summaryLabel}>Approved:</Text>
-            <Text style={[s.summaryValue, { color: GREEN }]}>{approvedCount}</Text>
-          </View>
-          <View style={s.summaryRow}>
-            <Text style={s.summaryLabel}>Rejected:</Text>
-            <Text style={[s.summaryValue, { color: RED }]}>{rejectedCount}</Text>
-          </View>
-          <View style={s.summaryRow}>
-            <Text style={s.summaryLabel}>Pending:</Text>
-            <Text style={[s.summaryValue, { color: "#f39c12" }]}>{pendingCount}</Text>
-          </View>
-          <View style={s.summaryRow}>
-            <Text style={s.summaryLabel}>Completion Rate:</Text>
-            <Text style={s.summaryValue}>{completionRate}%</Text>
+            <Text style={s.summaryLabel}>Total Weekly Entries: <Text style={s.summaryValue}>{totalEntries}</Text></Text>
+            <Text style={s.summaryLabel}>Approved: <Text style={[s.summaryValue, { color: GREEN }]}>{approvedCount}</Text></Text>
+            <Text style={s.summaryLabel}>Rejected: <Text style={[s.summaryValue, { color: RED }]}>{rejectedCount}</Text></Text>
+            <Text style={s.summaryLabel}>Pending Review: <Text style={[s.summaryValue, { color: GOLD }]}>{pendingCount}</Text></Text>
+            <Text style={s.summaryLabel}>Curricular Completion: <Text style={s.summaryValue}>{completionRate}%</Text></Text>
           </View>
         </View>
 
@@ -244,26 +267,26 @@ export default function MarkedLogbookPDF({
         <View style={s.tableBorder}>
           {/* Header row */}
           <View style={s.tableHeader}>
-            <View style={[s.headerCell, { width: "6%" }]}>
-              <Text>Week</Text>
+            <View style={[s.headerCell, { width: "5%", textAlign: "center" }]}>
+              <Text>Wk</Text>
             </View>
-            <View style={[s.headerCell, { width: "8%" }]}>
-              <Text>Week{"\n"}Ending</Text>
+            <View style={[s.headerCell, { width: "8%", textAlign: "center" }]}>
+              <Text>Week Ending</Text>
+            </View>
+            <View style={[s.headerCell, { width: "23%" }]}>
+              <Text>Objectives / Planned Activities</Text>
             </View>
             <View style={[s.headerCell, { width: "22%" }]}>
-              <Text>Objectives / To-do List</Text>
+              <Text>Actual Tasks Executed</Text>
             </View>
-            <View style={[s.headerCell, { width: "20%" }]}>
-              <Text>Actual Tasks</Text>
+            <View style={[s.headerCell, { width: "19%" }]}>
+              <Text>Reflective Summary & Learning</Text>
             </View>
-            <View style={[s.headerCell, { width: "18%" }]}>
-              <Text>Reflection</Text>
-            </View>
-            <View style={[s.headerCell, { width: "10%" }]}>
+            <View style={[s.headerCell, { width: "9%", textAlign: "center" }]}>
               <Text>Status</Text>
             </View>
-            <View style={[s.headerCell, { width: "16%", borderRightWidth: 0 }]}>
-              <Text>Supervisor Comment</Text>
+            <View style={[s.headerCell, { width: "14%", borderRightWidth: 0 }]}>
+              <Text>Supervisor Sign-off</Text>
             </View>
           </View>
 
@@ -272,32 +295,32 @@ export default function MarkedLogbookPDF({
             const statusDisplay = getStatusDisplay(entry.status);
             return (
               <View key={i} style={s.tableRow} wrap={false}>
-                <View style={[s.cell, { width: "6%", textAlign: "center" }]}>
-                  <Text>{entry.week}</Text>
+                <View style={[s.cell, { width: "5%", textAlign: "center" }]}>
+                  <Text style={s.bold}>{entry.week}</Text>
                 </View>
-                <View style={[s.cell, { width: "8%" }]}>
-                  <Text>{format(parseISO(entry.weekEndingDate), "dd/MM/yy")}</Text>
+                <View style={[s.cell, { width: "8%", textAlign: "center" }]}>
+                  <Text>{formatDateSafe(entry.weekEndingDate)}</Text>
+                </View>
+                <View style={[s.cell, { width: "23%" }]}>
+                  <Text>{entry.objectives || "-"}</Text>
                 </View>
                 <View style={[s.cell, { width: "22%" }]}>
-                  <Text>{entry.objectives}</Text>
+                  <Text>{entry.actualTasks || "-"}</Text>
                 </View>
-                <View style={[s.cell, { width: "20%" }]}>
-                  <Text>{entry.actualTasks}</Text>
+                <View style={[s.cell, { width: "19%" }]}>
+                  <Text>{entry.reflection || "-"}</Text>
                 </View>
-                <View style={[s.cell, { width: "18%" }]}>
-                  <Text>{entry.reflection}</Text>
-                </View>
-                <View style={[s.cell, { width: "10%" }]}>
+                <View style={[s.cell, { width: "9%", textAlign: "center" }]}>
                   <Text style={statusDisplay.style}>{statusDisplay.text}</Text>
                 </View>
-                <View style={[s.cell, { width: "16%", borderRightWidth: 0 }]}>
+                <View style={[s.cell, { width: "14%", borderRightWidth: 0 }]}>
                   {entry.supervisorComment ? (
                     <View style={s.commentBox}>
                       <Text style={s.commentLabel}>Comment:</Text>
                       <Text style={s.commentText}>{entry.supervisorComment}</Text>
                     </View>
                   ) : (
-                    <Text style={{ fontSize: 6, color: "#999" }}>-</Text>
+                    <Text style={{ fontSize: 6, color: "#94a3b8" }}>{entry.supervisorApproved ? "Approved ✓" : "Pending"}</Text>
                   )}
                 </View>
               </View>
@@ -307,11 +330,11 @@ export default function MarkedLogbookPDF({
 
         {/* Signatures */}
         <View style={s.sigSection}>
-          <Text style={s.sigTitle}>Verification & Approval:</Text>
+          <Text style={s.sigTitle}>Verification, Assessment & Official Signatures:</Text>
 
           {/* Student */}
           <View style={s.sigRow}>
-            <Text style={s.sigLabel}>Student:</Text>
+            <Text style={s.sigLabel}>Student ({studentName || "Student Intern"}):</Text>
             <View style={s.sigLine} />
             <Text style={s.sigDateLabel}>Date:</Text>
             <View style={s.sigDateLine} />
@@ -319,7 +342,7 @@ export default function MarkedLogbookPDF({
 
           {/* Supervisor */}
           <View style={s.sigRow}>
-            <Text style={s.sigLabel}>Supervisor ({supervisorName}):</Text>
+            <Text style={s.sigLabel}>Supervisor ({supervisorName || "Workplace Supervisor"}):</Text>
             <View style={s.sigLine} />
             <Text style={s.sigDateLabel}>Date:</Text>
             <View style={s.sigDateLine} />
@@ -327,7 +350,7 @@ export default function MarkedLogbookPDF({
 
           {/* Lecturer */}
           <View style={s.sigRow}>
-            <Text style={s.sigLabel}>Lecturer ({lecturerName}):</Text>
+            <Text style={s.sigLabel}>Academic Lecturer ({lecturerName || "Academic Supervisor"}):</Text>
             <View style={s.sigLine} />
             <Text style={s.sigDateLabel}>Date:</Text>
             <View style={s.sigDateLine} />
@@ -337,20 +360,18 @@ export default function MarkedLogbookPDF({
         {/* Bottom section */}
         <View style={s.bottomSection}>
           <Text style={s.disclaimer}>
-            This marked logbook report contains supervisor feedback and approval status for all submitted entries. 
-            It serves as an official record of the student's work-related learning activities and assessments. 
-            This document must be signed by all parties and officially stamped for validation.
+            This marked logbook report constitutes the authentic academic record of work-related learning tasks, reflections, 
+            and workplace supervisor sign-offs under the University of Zimbabwe Industrial Attachment regulations. 
+            All entries must be validated by the host organization and academic department.
           </Text>
           <View style={s.stampBox}>
-            <Text style={s.stampText}>Official{"\n"}Stamp</Text>
+            <Text style={s.stampText}>OFFICIAL STAMP</Text>
           </View>
         </View>
 
         {/* Footer */}
         <Text style={s.footer}>
-          Generated on {generatedDate || format(new Date(), "dd MMMM yyyy 'at' HH:mm")} | 
-          University of Zimbabwe - Work-Related Learning Platform | 
-          Completion Rate: {completionRate}%
+          Generated on {generatedDate || format(new Date(), "dd MMMM yyyy 'at' HH:mm")} | University of Zimbabwe Work-Related Learning Unit | Completion: {completionRate}%
         </Text>
       </Page>
     </Document>

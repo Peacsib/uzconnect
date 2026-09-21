@@ -16,8 +16,7 @@ import { format, parseISO } from "date-fns";
 import { getStatusColor } from "@/utils/formatters";
 import { usePlacements, useLogbookEntries, useApproveLogbookEntry, useRejectLogbookEntry, useStudents } from "@/hooks/useApi";
 import { toast } from "sonner";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import MarkedLogbookPDF from "@/components/pdf/MarkedLogbookPDF";
+import LogbookDownloadButton from "@/components/pdf/LogbookDownloadButton";
 
 export default function LogbookReview() {
   const { user } = useAuth();
@@ -263,39 +262,33 @@ export default function LogbookReview() {
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">Logbook Entries</h2>
             {selectedStudent.entries.length > 0 && (
-              <PDFDownloadLink
-                document={
-                  <MarkedLogbookPDF
-                    studentName={selectedStudent.user?.name || ""}
-                    regNumber={selectedStudent.user?.reg_number || ""}
-                    faculty="Science"
-                    department="Computer Science"
-                    programme="BSc Computer Science"
-                    hostInstitution="Placement Company"
-                    supervisorName={user?.name || "Supervisor"}
-                    lecturerName="Lecturer"
-                    entries={selectedStudent.entries.map((e: any) => ({
-                      week: e.week,
-                      weekEndingDate: e.week_ending_date,
-                      objectives: e.objectives,
-                      actualTasks: e.actual_tasks,
-                      reflection: e.reflection,
-                      status: e.status,
-                      supervisorComment: e.supervisor_comment,
-                      supervisorApproved: e.supervisor_approved,
-                      lecturerApproved: e.lecturer_approved,
-                    }))}
-                  />
+              <LogbookDownloadButton
+                studentName={selectedStudent.user?.name || ""}
+                regNumber={selectedStudent.user?.reg_number || ""}
+                faculty="Faculty of Science and Technology"
+                department="Department of Computer Science"
+                programme="BSc Computer Science Honours"
+                hostInstitution={
+                  myPlacements.find((p) => p.student_id === selectedStudent.id)?.company_name ||
+                  (user as any)?.company_name ||
+                  "Host Organization"
                 }
-                fileName={`Marked_Logbook_${selectedStudent.user?.name?.replace(/\s+/g, "_")}.pdf`}
-              >
-                {({ loading }) => (
-                  <Button variant="outline" size="sm" disabled={loading}>
-                    <FileDown className="w-4 h-4 mr-1" />
-                    {loading ? "Generating..." : "Export Marked PDF"}
-                  </Button>
-                )}
-              </PDFDownloadLink>
+                supervisorName={user?.name || "Workplace Supervisor"}
+                lecturerName="Academic Supervisor"
+                entries={selectedStudent.entries.map((e: any) => ({
+                  week: e.week,
+                  weekEndingDate: e.week_ending_date || e.weekEndingDate || "",
+                  objectives: e.objectives || "",
+                  actualTasks: e.actual_tasks || e.actualTasks || "",
+                  reflection: e.reflection || "",
+                  status: e.status || "draft",
+                  supervisorComment: e.supervisor_comment || e.supervisorComment,
+                  supervisorApproved: e.supervisor_approved ?? e.supervisorApproved,
+                  lecturerApproved: e.lecturer_approved ?? e.lecturerApproved,
+                }))}
+                buttonText="Export Marked PDF"
+                size="sm"
+              />
             )}
           </div>
 

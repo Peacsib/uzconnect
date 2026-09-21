@@ -29,8 +29,7 @@ import {
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { PDFDownloadLink } from "@react-pdf/renderer";
-import MarkedLogbookPDF from "@/components/pdf/MarkedLogbookPDF";
+import LogbookDownloadButton from "@/components/pdf/LogbookDownloadButton";
 
 export default function LogbookOverview() {
   const { user } = useAuth();
@@ -246,7 +245,7 @@ export default function LogbookOverview() {
             {selectedStudent ? (
               <Card className="border-border/60 shadow-xs">
                 <CardHeader className="border-b border-border/40 pb-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <CardTitle className="text-base font-bold text-foreground">
@@ -260,6 +259,32 @@ export default function LogbookOverview() {
                         Attachment at <strong>{selectedStudent.companyName}</strong> • Mentor: {selectedStudent.supervisorName}
                       </CardDescription>
                     </div>
+
+                    {selectedStudent.entries.length > 0 && (
+                      <LogbookDownloadButton
+                        studentName={selectedStudent.name || ""}
+                        regNumber={selectedStudent.regNumber || ""}
+                        faculty="Faculty of Science and Technology"
+                        department="Department of Computer Science"
+                        programme={selectedStudent.programmeName || selectedStudent.programmeCode || "BSc Computer Science Honours"}
+                        hostInstitution={selectedStudent.companyName || "Host Organization"}
+                        supervisorName={selectedStudent.supervisorName || "Workplace Supervisor"}
+                        lecturerName={user?.name || "Academic Supervisor"}
+                        entries={selectedStudent.entries.map((e: any) => ({
+                          week: e.week,
+                          weekEndingDate: e.weekEndingDate || e.week_ending_date || "",
+                          objectives: e.objectives || "",
+                          actualTasks: e.actualTasks || e.actual_tasks || "",
+                          reflection: e.reflection || "",
+                          status: e.status || "draft",
+                          supervisorComment: e.supervisorComment || e.supervisor_comment,
+                          supervisorApproved: e.supervisorApproved ?? e.supervisor_approved,
+                          lecturerApproved: e.lecturerApproved ?? e.lecturer_approved,
+                        }))}
+                        buttonText="Download Marked PDF"
+                        size="sm"
+                      />
+                    )}
                   </div>
                 </CardHeader>
 
