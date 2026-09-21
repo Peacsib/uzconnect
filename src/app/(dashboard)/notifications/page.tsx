@@ -1,37 +1,44 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Suspense } from "react";
 import { 
   Bell, 
   Search, 
-  ShieldCheck, 
-  CheckCheck, 
-  Clock, 
-  AlertCircle, 
-  Info, 
-  Sparkles, 
+  Check, 
   Trash2, 
   RefreshCw, 
   ExternalLink, 
-  Mail, 
+  FileDown, 
+  FileSpreadsheet, 
+  Maximize2, 
+  MoreVertical, 
+  Clock, 
+  CheckCheck, 
+  ShieldCheck, 
+  AlertCircle, 
+  Info, 
   GraduationCap, 
-  Building2, 
+  Mail, 
   BookOpen, 
-  Loader2,
-  Check,
-  Filter,
-  ArrowRight
+  Building2,
+  ChevronDown,
+  Loader2
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/context/AuthContext";
+import { useSearchParams, useRouter } from "next/navigation";
 import { format, parseISO } from "date-fns";
 import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { motion, AnimatePresence } from "framer-motion";
+import { exportToPDF, exportToExcel } from "@/utils/exportUtils";
 
 interface NotificationRecord {
   id: string;
@@ -44,20 +51,22 @@ interface NotificationRecord {
   createdAt: string;
 }
 
-export default function NotificationsPage() {
+function NotificationsContent() {
   const { user } = useAuth();
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   const [notifications, setNotifications] = useState<NotificationRecord[]>([]);
   const [selectedNotif, setSelectedNotif] = useState<NotificationRecord | null>(null);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [stats, setStats] = useState({ total: 0, unread: 0, logbooks: 0, placements: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Filters
-  const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<"all" | "unread" | "logbooks" | "placements">("all");
+  // Filters matching Old Mutual / Workday layout
+  const [viewFilter, setViewFilter] = useState<"all" | "unread" | "logbooks" | "placements">("all");
+  const [sortOrder, setSortOrder] = useState<"newest" | "oldest">("newest");
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const targetId = searchParams?.get("id");
 
   const fetchNotifications = useCallback(async () => {
     if (!user?.email) return;
@@ -66,49 +75,43 @@ export default function NotificationsPage() {
       const res = await fetch(`/api/notifications?email=${encodeURIComponent(user.email)}`);
       const data = await res.json();
       if (data.success) {
-        const notifs = data.notifications || [];
-        setNotifications(notifs);
-        setUnreadCount(data.unreadCount || 0);
-        if (data.stats) setStats(data.stats);
-        if (notifs.length > 0 && !selectedNotif) {
-          setSelectedNotif(notifs[0]);
+        const list: NotificationRecord[] = data.notifications || [];
+        setNotifications(list);
+
+        // If URL has targetId, find and select it
+        if (targetId) {
+          const match = list.find((n) => n.id === targetId);
+          if (match) {
+            setSelectedNotif(match);
+            return;
+          }
+        }
+
+        // Default to first item if none selected
+        if (list.length > 0 && !selectedNotif) {
+          setSelectedNotif(list[0]);
         }
       }
-    } catch {
-      toast.error("Failed to load notifications");
+    } catch (err) {
+      console.error("Failed to load notifications:", err);
     } finally {
       setIsLoading(false);
     }
-  }, [user?.email]);
+  }, [user?.email, targetId]);
 
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await fetchNotifications();
-    setIsRefreshing(false);
-    toast.success("Notifications synchronized");
-  };
-
-  const handleMarkAllRead = async () => {
-    if (!user?.email || unreadCount === 0) return;
-    try {
-      await fetch("/api/notifications/read", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email, all: true }),
-      });
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-      setStats((s) => ({ ...s, unread: 0 }));
-      if (selectedNotif) setSelectedNotif({ ...selectedNotif, read: true });
-      toast.success("All notifications marked as read");
-    } catch {
-      toast.error("Error marking all read");
+  // Handle auto-select when targetId query param arrives
+  useEffect(() => {
+    if (targetId && notifications.length > 0) {
+      const match = notifications.find((n) => n.id === targetId);
+      if (match) {
+        setSelectedNotif(match);
+      }
     }
-  };
+  }, [targetId, notifications]);
 
   const handleSelectNotif = async (notif: NotificationRecord) => {
     setSelectedNotif(notif);
@@ -122,10 +125,8 @@ export default function NotificationsPage() {
         setNotifications((prev) =>
           prev.map((n) => (n.id === notif.id ? { ...n, read: true } : n))
         );
-        setUnreadCount((c) => Math.max(0, c - 1));
-        setStats((s) => ({ ...s, unread: Math.max(0, s.unread - 1) }));
       } catch (err) {
-        console.error("Error updating read status:", err);
+        console.error("Error marking read:", err);
       }
     }
   };
@@ -141,14 +142,12 @@ export default function NotificationsPage() {
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, read: nextRead } : n))
       );
-      setUnreadCount((c) => (nextRead ? Math.max(0, c - 1) : c + 1));
-      setStats((s) => ({ ...s, unread: nextRead ? Math.max(0, s.unread - 1) : s.unread + 1 }));
       if (selectedNotif?.id === notif.id) {
         setSelectedNotif({ ...selectedNotif, read: nextRead });
       }
       toast.success(nextRead ? "Marked as read" : "Marked as unread");
     } catch {
-      toast.error("Failed to toggle read status");
+      toast.error("Failed to update status");
     }
   };
 
@@ -162,423 +161,356 @@ export default function NotificationsPage() {
         const nextList = notifications.filter((n) => n.id !== id);
         setNotifications(nextList);
         setSelectedNotif(nextList[0] || null);
-        toast.success("Notification removed");
+        toast.success("Notification deleted");
       }
     } catch {
       toast.error("Failed to delete notification");
     }
   };
 
-  // Filtered list
-  const filteredList = useMemo(() => {
-    return notifications.filter((n) => {
-      // Tab filter
-      if (activeTab === "unread" && n.read) return false;
-      if (activeTab === "logbooks") {
-        if (!["LOGBOOK_SUBMITTED", "LOGBOOK_APPROVED", "LOGBOOK_PENDING", "LOGBOOK_DEADLINES", "ASSESSMENT_COMPLETED"].includes(n.type)) {
-          return false;
-        }
-      }
-      if (activeTab === "placements") {
-        if (!["PLACEMENT_APPROVED", "PLACEMENT_ACTIVE", "PLACEMENT_PENDING", "ALLOCATION"].includes(n.type)) {
-          return false;
-        }
-      }
-      // Search filter
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        return n.title.toLowerCase().includes(q) || n.message.toLowerCase().includes(q);
-      }
-      return true;
-    });
-  }, [notifications, activeTab, search]);
-
-  const getCategoryName = (type: string) => {
-    switch (type) {
-      case "LOGBOOK_SUBMITTED":
-      case "LOGBOOK_APPROVED":
-      case "LOGBOOK_PENDING":
-      case "LOGBOOK_DEADLINES":
-        return "Logbook Verification";
-      case "PLACEMENT_APPROVED":
-      case "PLACEMENT_ACTIVE":
-      case "PLACEMENT_PENDING":
-      case "ALLOCATION":
-        return "Attachment & Supervision";
-      case "ASSESSMENT_COMPLETED":
-        return "Academic Appraisal";
-      case "MESSAGE":
-        return "Direct Consultation";
-      default:
-        return "Institutional Record";
+  const handleMarkAllRead = async () => {
+    if (!user?.email) return;
+    try {
+      await fetch("/api/notifications/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email, all: true }),
+      });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      if (selectedNotif) setSelectedNotif({ ...selectedNotif, read: true });
+      toast.success("All notifications marked as read");
+    } catch {
+      toast.error("Error marking all read");
     }
   };
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "PLACEMENT_APPROVED":
-      case "PLACEMENT_ACTIVE":
-        return <ShieldCheck className="w-4 h-4 text-emerald-600" />;
-      case "LOGBOOK_APPROVED":
-        return <CheckCheck className="w-4 h-4 text-emerald-600" />;
-      case "LOGBOOK_SUBMITTED":
-      case "LOGBOOK_PENDING":
-      case "PLACEMENT_PENDING":
-      case "LOGBOOK_DEADLINES":
-        return <Clock className="w-4 h-4 text-amber-500" />;
-      case "ALLOCATION":
-        return <GraduationCap className="w-4 h-4 text-[#003366] dark:text-blue-400" />;
-      case "ALERT":
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case "MESSAGE":
-        return <Mail className="w-4 h-4 text-purple-500" />;
-      default:
-        return <Info className="w-4 h-4 text-blue-500" />;
-    }
-  };
+  const filteredAndSorted = useMemo(() => {
+    let result = [...notifications];
 
-  const formatRelativeTime = (isoString: string) => {
+    // Filter
+    if (viewFilter === "unread") {
+      result = result.filter((n) => !n.read);
+    } else if (viewFilter === "logbooks") {
+      result = result.filter((n) =>
+        ["LOGBOOK_SUBMITTED", "LOGBOOK_APPROVED", "LOGBOOK_PENDING", "LOGBOOK_DEADLINES", "ASSESSMENT_COMPLETED"].includes(n.type)
+      );
+    } else if (viewFilter === "placements") {
+      result = result.filter((n) =>
+        ["PLACEMENT_APPROVED", "PLACEMENT_ACTIVE", "PLACEMENT_PENDING", "ALLOCATION"].includes(n.type)
+      );
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter((n) => n.title.toLowerCase().includes(q) || n.message.toLowerCase().includes(q));
+    }
+
+    // Sort
+    if (sortOrder === "oldest") {
+      result.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } else {
+      result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    return result;
+  }, [notifications, viewFilter, sortOrder, searchQuery]);
+
+  const formatShortTime = (isoString: string) => {
     if (!isoString) return "";
     const date = new Date(isoString);
     const now = new Date();
-    const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
-    if (diffMin < 1) return "Just now";
-    if (diffMin < 60) return `${diffMin}m ago`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays >= 1) return `${diffDays}d`;
+    const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    if (diffHours >= 1) return `${diffHours}h`;
+    const diffMin = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    return `${diffMin}m`;
   };
 
-  const formatFullDateTime = (isoString: string) => {
+  const formatDaysAgoText = (isoString: string) => {
     if (!isoString) return "";
-    try {
-      const date = parseISO(isoString);
-      return format(date, "EEEE, d MMMM yyyy 'at' h:mm a");
-    } catch {
-      return new Date(isoString).toLocaleString();
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) {
+      const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+      if (diffHours === 0) return "Today (just now)";
+      return `Today (${diffHours} hour${diffHours > 1 ? "s" : ""} ago)`;
     }
+    return `${diffDays} day(s) ago`;
+  };
+
+  const getActionLabel = (notif: NotificationRecord) => {
+    const t = notif.type;
+    if (t.includes("LOGBOOK")) return "View Logbook";
+    if (t.includes("PLACEMENT") || t.includes("ALLOCATION")) return "View Placement";
+    if (t.includes("ASSESSMENT")) return "View Assessment";
+    if (t.includes("MESSAGE")) return "Open Messages";
+    return "View Details";
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Top Banner & Greeting (The Forge & Old Mutual Style) */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/60 pb-5">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-[#003366] dark:text-blue-400">
-            Institutional Audit & Notifications
-          </span>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground mt-0.5">
-            Welcome, {user?.name || "Member"}
-          </h1>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Your centralized institutional notifications, tripartite logbook reviews, and academic milestones
-          </p>
+    <div className="bg-background min-h-[calc(100vh-5rem)] flex flex-col">
+      {/* Top Search Bar (Old Mutual Style) */}
+      <div className="flex items-center justify-between pb-4 border-b border-border/60">
+        <div className="relative w-full max-w-md">
+          <Search className="absolute left-3.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search notification subject or message..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9.5 text-xs h-9 rounded-full border-border/80 bg-card focus-visible:ring-1"
+          />
         </div>
         <div className="flex items-center gap-2">
-          {unreadCount > 0 && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleMarkAllRead}
-              className="text-xs h-8.5 rounded-lg cursor-pointer gap-1.5"
-            >
-              <Check className="w-3.5 h-3.5 text-emerald-600" />
-              Mark all read
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="text-xs h-8.5 rounded-lg cursor-pointer gap-1.5"
+            onClick={fetchNotifications}
+            className="text-xs h-8.5 rounded-lg gap-1.5"
           >
-            <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
-            Refresh
+            <RefreshCw className={cn("w-3.5 h-3.5", isLoading && "animate-spin")} />
+            Sync
           </Button>
         </div>
       </div>
 
-      {/* 4 The Forge Style Metric Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-border/60 shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Historical Notices</p>
-              <p className="text-2xl font-bold text-foreground mt-1">{stats.total}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Logged records</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-[#003366]/10 text-[#003366] dark:bg-blue-900/30 dark:text-blue-400 flex items-center justify-center">
-              <Bell className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+      {/* Main Two-Pane Split Layout (Direct Workday / Old Mutual Pattern) */}
+      <div className="flex-1 grid md:grid-cols-12 gap-0 border border-border/60 rounded-xl bg-card overflow-hidden mt-4 shadow-xs">
+        {/* Left Column: Notifications Feed (4 of 12 cols) */}
+        <div className="md:col-span-4 border-r border-border/60 flex flex-col bg-card">
+          {/* Left Header */}
+          <div className="p-4 border-b border-border/60 space-y-3">
+            <h1 className="text-xl font-bold tracking-tight text-foreground">Notifications</h1>
 
-        <Card className="border-border/60 shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Action Required</p>
-              <p className="text-2xl font-bold text-[#ff8c00] mt-1">{stats.unread}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Unread alerts</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-[#ff8c00]/10 text-[#ff8c00] flex items-center justify-center">
-              <Clock className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+            {/* Filter Pills / Dropdowns */}
+            <div className="flex items-center justify-between gap-1.5 pt-0.5">
+              <div className="flex items-center gap-2">
+                {/* Viewing Filter Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border/80 text-xs font-medium hover:bg-muted/50 transition-colors cursor-pointer bg-card">
+                      <span>Viewing: {viewFilter === "all" ? "All" : viewFilter === "unread" ? "Unread" : viewFilter === "logbooks" ? "Logbooks" : "Placements"}</span>
+                      <ChevronDown className="w-3 h-3 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="text-xs">
+                    <DropdownMenuItem onClick={() => setViewFilter("all")}>All</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setViewFilter("unread")}>Unread Only</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setViewFilter("logbooks")}>Logbook Verification</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setViewFilter("placements")}>Placements & Supervision</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
 
-        <Card className="border-border/60 shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Logbook Reviews</p>
-              <p className="text-2xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">{stats.logbooks}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Weekly submissions</p>
-            </div>
-            <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center">
-              <BookOpen className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
+                {/* Sort Order Dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground font-medium transition-colors cursor-pointer">
+                      <span>Sort By: {sortOrder === "newest" ? "Newest" : "Oldest"}</span>
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="text-xs">
+                    <DropdownMenuItem onClick={() => setSortOrder("newest")}>Newest First</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortOrder("oldest")}>Oldest First</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
-        <Card className="border-border/60 shadow-xs">
-          <CardContent className="p-4 flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Supervision & Viva</p>
-              <p className="text-2xl font-bold text-primary mt-1">{stats.placements}</p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">Attachment milestones</p>
+              {/* Three Dots Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-full text-muted-foreground hover:text-foreground">
+                    <MoreVertical className="w-3.5 h-3.5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="text-xs">
+                  <DropdownMenuItem onClick={handleMarkAllRead}>
+                    <Check className="w-3.5 h-3.5 mr-2" /> Mark all as read
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setViewFilter("unread")}>
+                    Show unread only
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-            <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 flex items-center justify-center">
-              <Building2 className="w-5 h-5" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Search & Category Filter Tabs */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-        {/* Category Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-          <Button
-            variant={activeTab === "all" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("all")}
-            className={cn("text-xs h-8 rounded-full px-3.5 cursor-pointer font-medium", activeTab === "all" && "bg-[#003366] text-white hover:bg-[#002244]")}
-          >
-            All Notices ({notifications.length})
-          </Button>
-          <Button
-            variant={activeTab === "unread" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("unread")}
-            className={cn("text-xs h-8 rounded-full px-3.5 cursor-pointer font-medium", activeTab === "unread" && "bg-[#ff8c00] text-white hover:bg-[#e07b00]")}
-          >
-            Unread ({unreadCount})
-          </Button>
-          <Button
-            variant={activeTab === "logbooks" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("logbooks")}
-            className={cn("text-xs h-8 rounded-full px-3.5 cursor-pointer font-medium", activeTab === "logbooks" && "bg-[#003366] text-white")}
-          >
-            Logbooks ({stats.logbooks})
-          </Button>
-          <Button
-            variant={activeTab === "placements" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("placements")}
-            className={cn("text-xs h-8 rounded-full px-3.5 cursor-pointer font-medium", activeTab === "placements" && "bg-[#003366] text-white")}
-          >
-            Placements ({stats.placements})
-          </Button>
-        </div>
-
-        {/* Search Bar (Old Mutual Portal Pill Styling) */}
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            placeholder="Search notifications..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-8.5 text-xs h-8.5 rounded-full border-border/70 focus-visible:ring-1"
-          />
-        </div>
-      </div>
-
-      {/* Master-Detail Inbox View */}
-      {isLoading ? (
-        <div className="flex flex-col items-center justify-center h-80 gap-3">
-          <Loader2 className="w-7 h-7 animate-spin text-[#003366] dark:text-[#ffa726]" />
-          <p className="text-xs text-muted-foreground font-medium">Loading notifications ledger...</p>
-        </div>
-      ) : filteredList.length === 0 ? (
-        <Card className="border-border/60">
-          <CardContent className="p-12 text-center space-y-3">
-            <Sparkles className="w-10 h-10 text-muted-foreground/40 mx-auto" />
-            <h3 className="font-semibold text-foreground text-sm">No Notifications Found</h3>
-            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              {search ? "No records matched your search filter." : "You have no active notifications under this category."}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid md:grid-cols-5 gap-6 items-start">
-          {/* Left Column: Notification Feed (2 cols) */}
-          <div className="md:col-span-2 space-y-2 max-h-[640px] overflow-y-auto pr-1">
-            {filteredList.map((n) => {
-              const isSelected = selectedNotif?.id === n.id;
-              return (
-                <div
-                  key={n.id}
-                  onClick={() => handleSelectNotif(n)}
-                  className={cn(
-                    "p-3.5 rounded-xl border transition-all cursor-pointer text-left space-y-1.5 relative",
-                    isSelected
-                      ? "border-[#003366] bg-[#003366]/[0.05] dark:border-blue-400 dark:bg-blue-900/20 shadow-xs"
-                      : "border-border/60 bg-card hover:border-border hover:bg-muted/30",
-                    !n.read && "border-l-4 border-l-[#ff8c00]"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-1">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="shrink-0">{getIcon(n.type)}</div>
-                      <p className={cn("text-xs font-semibold truncate", !n.read ? "text-foreground" : "text-muted-foreground")}>
-                        {n.title}
-                      </p>
-                    </div>
-                    <span className="text-[10px] text-muted-foreground font-mono shrink-0">
-                      {formatRelativeTime(n.createdAt)}
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed pl-6">
-                    {n.message}
-                  </p>
-                  <div className="flex items-center justify-between pl-6 pt-0.5">
-                    <span className="text-[9px] text-muted-foreground/70 uppercase tracking-wider font-semibold">
-                      {getCategoryName(n.type)}
-                    </span>
-                    {!n.read && (
-                      <span className="text-[10px] text-[#ff8c00] font-semibold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#ff8c00]" />
-                        Unread
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            <p className="text-[11px] text-muted-foreground font-medium">From Last 30 Days</p>
           </div>
 
-          {/* Right Column: Full Detailed Viewer Pane (3 cols) */}
-          <div className="md:col-span-3">
-            {selectedNotif ? (
-              <Card className="border-border/70 shadow-sm rounded-2xl overflow-hidden sticky top-20">
-                {/* Top Accent Stripe */}
-                <div className="h-1.5 bg-gradient-to-r from-[#003366] via-[#ff8c00] to-[#003366] w-full" />
-
-                <CardHeader className="pb-4 border-b border-border/50">
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-[#003366] dark:text-blue-400">
-                      {getCategoryName(selectedNotif.type)}
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "text-[10px] font-semibold px-2.5 py-0.5",
-                        selectedNotif.read
-                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                          : "bg-[#ff8c00]/10 text-[#ff8c00] border-[#ff8c00]/30"
-                      )}
-                    >
-                      {selectedNotif.read ? "Read" : "Unread"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                      {getIcon(selectedNotif.type)}
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg font-bold text-foreground leading-snug">
-                        {selectedNotif.title}
-                      </CardTitle>
-                      <CardDescription className="text-xs text-muted-foreground mt-1">
-                        {formatFullDateTime(selectedNotif.createdAt)}
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="p-6 space-y-6">
-                  {/* Full Message Container */}
-                  <div className="p-4.5 rounded-xl bg-muted/40 border border-border/60 text-sm text-foreground leading-relaxed whitespace-pre-wrap">
-                    {selectedNotif.message}
-                  </div>
-
-                  {/* Context Card (The Forge "What moves you forward" Pattern) */}
-                  <div className="p-4 rounded-xl border border-border/50 bg-background space-y-2 text-xs">
-                    <p className="font-semibold text-foreground flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#003366] dark:text-blue-400" />
-                      What moves you forward
-                    </p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Derived from your current institutional workflow state
-                    </p>
-                    <ul className="space-y-2 text-muted-foreground text-[11px] pt-1">
-                      <li className="flex items-start gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#003366] dark:bg-blue-400 shrink-0 mt-1.5" />
-                        <span>Actionable record synchronized with your university account profile.</span>
-                      </li>
-                      {selectedNotif.link && (
-                        <li className="flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#003366] dark:bg-blue-400 shrink-0 mt-1.5" />
-                          <span>Direct confirmation or grading response available at target module.</span>
-                        </li>
-                      )}
-                    </ul>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-border/50">
-                    <div className="flex items-center gap-2 w-full sm:w-auto">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleToggleRead(selectedNotif)}
-                        className="text-xs h-8.5 rounded-lg cursor-pointer flex-1 sm:flex-none"
-                      >
-                        {selectedNotif.read ? "Mark as unread" : "Mark as read"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(selectedNotif.id)}
-                        className="text-xs h-8.5 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer px-3"
-                        title="Delete notification"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-
-                    {selectedNotif.link && (
-                      <Button
-                        size="sm"
-                        onClick={() => router.push(selectedNotif.link!)}
-                        className="w-full sm:w-auto bg-[#003366] hover:bg-[#002244] text-white text-xs font-semibold h-8.5 px-5 rounded-lg cursor-pointer flex items-center justify-center gap-2 shadow-xs"
-                      >
-                        <span>Open Related Page</span>
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Left Notification List Items */}
+          <div className="divide-y divide-border/40 overflow-y-auto max-h-[calc(100vh-16rem)]">
+            {isLoading && notifications.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin text-[#003366]" />
+                Loading notifications...
+              </div>
+            ) : filteredAndSorted.length === 0 ? (
+              <div className="py-16 text-center text-xs text-muted-foreground px-4">
+                No notifications to display under current filter.
+              </div>
             ) : (
-              <Card className="border-border/60 p-12 text-center text-muted-foreground text-xs">
-                Select a notification to view its full details.
-              </Card>
+              filteredAndSorted.map((n) => {
+                const isSelected = selectedNotif?.id === n.id;
+                return (
+                  <div
+                    key={n.id}
+                    onClick={() => handleSelectNotif(n)}
+                    className={cn(
+                      "p-4 transition-colors cursor-pointer text-left relative flex items-start gap-3",
+                      isSelected
+                        ? "bg-[#003366]/[0.05] dark:bg-blue-900/20"
+                        : "hover:bg-muted/40",
+                      !n.read && "font-medium"
+                    )}
+                  >
+                    {/* Active Left Vertical Blue Bar Indicator (From User Screenshot) */}
+                    {isSelected && (
+                      <div className="absolute left-0 top-2 bottom-2 w-1 bg-[#003366] rounded-r-full" />
+                    )}
+
+                    {/* Unread Indicator Circle */}
+                    <div className="mt-1 shrink-0">
+                      {!n.read ? (
+                        <div className="w-2 h-2 rounded-full bg-[#003366] ring-2 ring-[#003366]/20" />
+                      ) : (
+                        <div className="w-2 h-2 rounded-full border border-border/80" />
+                      )}
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={cn("text-xs leading-snug line-clamp-2", isSelected ? "text-[#003366] dark:text-blue-400 font-bold" : !n.read ? "text-foreground font-bold" : "text-muted-foreground font-medium")}>
+                          {n.title}
+                        </p>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap font-mono shrink-0">
+                          {formatShortTime(n.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                        {n.message}
+                      </p>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
-      )}
+
+        {/* Right Column: Full Detailed Notification Document (8 of 12 cols) */}
+        <div className="md:col-span-8 p-6 md:p-8 flex flex-col justify-between min-h-[500px] bg-card overflow-y-auto">
+          {selectedNotif ? (
+            <div className="space-y-6">
+              {/* Document Header & Utility Icons */}
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-4 border-b border-border/60">
+                <div className="space-y-1.5 flex-1">
+                  <h2 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-snug">
+                    {selectedNotif.title}
+                  </h2>
+                  <p className="text-xs text-muted-foreground font-medium">
+                    {formatDaysAgoText(selectedNotif.createdAt)} • {format(new Date(selectedNotif.createdAt), "dd MMM yyyy, h:mm a")}
+                  </p>
+                </div>
+
+                {/* Utility Export and Action Icons (Right Corner) */}
+                <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => exportToExcel("Notification_Export", ["Title", "Date", "Message"], [[selectedNotif.title, selectedNotif.createdAt, selectedNotif.message]])}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                    title="Export to Excel"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => exportToPDF("Official_Institutional_Notice", ["Subject", "Date", "Content"], [[selectedNotif.title, selectedNotif.createdAt, selectedNotif.message]])}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                    title="Export to PDF"
+                  >
+                    <FileDown className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleToggleRead(selectedNotif)}
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground cursor-pointer"
+                    title={selectedNotif.read ? "Mark as unread" : "Mark as read"}
+                  >
+                    <Check className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(selectedNotif.id)}
+                    className="h-8 w-8 text-destructive hover:bg-destructive/10 cursor-pointer"
+                    title="Delete notice"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Full Detailed Message Letter Body (Exact Workday / Old Mutual Pattern) */}
+              <div className="space-y-4 text-xs md:text-sm text-foreground/90 leading-relaxed max-w-2xl">
+                <p className="font-semibold text-foreground">
+                  Good Day {user?.name || "Member"}
+                </p>
+
+                <p className="whitespace-pre-wrap text-foreground/80 leading-relaxed text-sm">
+                  {selectedNotif.message}
+                </p>
+
+                <div className="pt-2 text-muted-foreground text-xs space-y-1">
+                  <p>Please review your dashboard record if any verification or input is required.</p>
+                  <p>If you require institutional assistance, consult your University Academic Supervisor or Department Coordinator.</p>
+                </div>
+
+                <div className="pt-4 text-xs text-foreground/80">
+                  <p>Kind Regards,</p>
+                  <p className="font-semibold text-foreground mt-0.5">Work Related Learning Directorate</p>
+                  <p className="text-muted-foreground text-[11px]">University of Zimbabwe</p>
+                </div>
+              </div>
+
+              {/* Action Pill Button (Exact Blue Pill Button from Screenshot in OG Royal Navy) */}
+              {selectedNotif.link && (
+                <div className="pt-6">
+                  <Button
+                    onClick={() => router.push(selectedNotif.link!)}
+                    className="bg-[#003366] hover:bg-[#002244] text-white text-xs font-semibold h-9 px-6 rounded-full shadow-xs cursor-pointer inline-flex items-center gap-2"
+                  >
+                    <span>{getActionLabel(selectedNotif)}</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col items-center justify-center text-center p-8 text-muted-foreground space-y-2">
+              <Bell className="w-10 h-10 text-muted-foreground/40" />
+              <p className="text-sm font-semibold text-foreground">No notification selected</p>
+              <p className="text-xs max-w-xs">Select a notification from the list on the left to read its full official notice.</p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-96 gap-2 text-xs text-muted-foreground">
+        <Loader2 className="w-6 h-6 animate-spin text-[#003366]" />
+        Loading notifications...
+      </div>
+    }>
+      <NotificationsContent />
+    </Suspense>
   );
 }
